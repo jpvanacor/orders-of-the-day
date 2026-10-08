@@ -1,0 +1,73 @@
+name: Android app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "sw.js"
+      - "manifest.webmanifest"
+      - "icons/**"
+      - "fonts/**"
+      - "android/**"
+      - "scripts/**"
+      - "capacitor.config.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-app
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Install
+        run: npm ci
+
+      - name: Copy the web app into the Android project
+        run: npm run sync
+
+      - name: Read the app version
+        id: version
+        run: echo "number=$(grep -oE 'var APP_VERSION=[0-9]+' index.html | grep -oE '[0-9]+$')" >> "$GITHUB_OUTPUT"
+
+      - name: Build the APK
+        working-directory: android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: ${{ steps.version.outputs.number }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/orders-of-the-day.apk"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.version.outputs.number }}
+        run: |
+          if gh release view "v$V" > /dev/null 2>&1; then
+            gh release upload "v$V" orders-of-the-day.apk --clobber
+          else
+            gh release create "v$V" orders-of-the-day.apk --title "Orders of the Day $V" --notes "Android app. On your phone, download orders-of-the-day.apk and open it to install or update." --latest
+          fi

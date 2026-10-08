@@ -28,6 +28,10 @@ img{max-width:100%}
 [hidden]{display:none!important}
 .hs-p{margin:.25rem 0 .85rem}
 #installBtn{margin-bottom:.9rem}
+.update{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.75rem;padding:.8rem 1rem;border-radius:6px;background:var(--ink);color:var(--bg);text-decoration:none;font-weight:700}
+.update .go{font:700 .75rem/1 var(--font-body);letter-spacing:.1em;text-transform:uppercase;border:1px solid currentColor;border-radius:3px;padding:.4rem .55rem;flex:none}
+.btnrow{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem}
+a.switch{display:inline-block;text-decoration:none}
 /* Layout: one phone-width column. The current order is a colored sign that flips in like a departure board, the day is a line of colored stops, tabs are pinned to the bottom. */
 :root{
   --bg:#E9EDF0; --surface:#F7F9FA; --ink:#101920; --muted:#56636E; --line:#CFD7DD; --soft:#DDE3E8; --on-cat:#FFFFFF;
@@ -223,6 +227,7 @@ details .checks{margin-top:.3rem}
 
   <main>
     <section id="view-now" class="view" aria-label="Now">
+      <a class="update" id="updateBar" hidden href="#"><span id="updateText">A new version is ready</span><span class="go">Download</span></a>
       <div class="toolbar">
         <div class="daytype" id="dayType" role="group" aria-label="Where you work today">
           <button type="button" id="dtHome" aria-pressed="true">Home day</button>
@@ -274,6 +279,12 @@ details .checks{margin-top:.3rem}
         <div class="toggles" id="officeDays"></div>
         <p class="hint" id="officeHint"></p>
       </section>
+      <section class="sec" id="notifSec" hidden>
+        <h2>Notifications</h2>
+        <div class="switchrow"><span>A notification when each block starts, even with the app closed</span><button type="button" class="switch" id="notifTog" aria-pressed="true">On</button></div>
+        <p class="hint" id="notifStatus">Checking notifications.</p>
+        <div class="btnrow"><button type="button" class="switch" id="notifAllow" hidden>Allow notifications</button><button type="button" class="switch" id="notifTest">Send a test</button></div>
+      </section>
       <section class="sec">
         <h2>This month <span class="sub-h" id="monthName">October 2026</span></h2>
         <ul class="month" id="monthList"></ul>
@@ -305,7 +316,17 @@ details .checks{margin-top:.3rem}
         <div class="switchrow" id="awakeRow"><span>Keep the screen on while this page is open, so the chime can reach you</span><button type="button" class="switch" id="awakeTog" aria-pressed="false">Off</button></div>
         <p class="hint">Sound starts after your first tap on the page and plays only while the page is open.</p>
       </section>
-      <section class="sec">
+      <section class="sec" id="apkSec">
+        <h2>Android app</h2>
+        <p class="hint" style="margin-top:0">The Android app sends a notification when each block starts, even with the app closed.</p>
+        <ol class="steps">
+          <li>Tap Download the app on your phone.</li>
+          <li>Open the downloaded file and allow installs from your browser when Android asks.</li>
+          <li>Open Orders and allow notifications.</li>
+        </ol>
+        <a class="switch" id="apkLink" href="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk">Download the app</a>
+      </section>
+      <section class="sec" id="installSec">
         <h2>On your home screen</h2>
         <div class="homescreen">
           <img src="icons/icon-192.png" alt="Orders of the Day icon: a colored day line with the current stop lit" width="88" height="88">
@@ -322,7 +343,7 @@ details .checks{margin-top:.3rem}
         </div>
         <div class="linkrow"><code id="appLink"></code><button type="button" class="switch" id="copyLink">Copy link</button></div>
         <p class="hint">Checks and settings stay on this phone. After the first visit the app also opens without internet.</p>
-        <p class="hint" id="appVersion">Version 1 · 8 Oct 2026</p>
+        <p class="hint" id="appVersion">Version 2</p>
       </section>
     </section>
   </main>
@@ -522,6 +543,10 @@ function monthSpecials(date,settings){
 "use strict";
 if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
+var CAP=window.Capacitor;
+var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
+var APP_VERSION=2;
+var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
@@ -530,6 +555,7 @@ if(!Array.isArray(settings.officeDays)) settings.officeDays=[];
 if(!settings.overrides||typeof settings.overrides!=="object") settings.overrides={};
 if(typeof settings.sound!=="boolean") settings.sound=true;
 if(typeof settings.awake!=="boolean") settings.awake=false;
+if(typeof settings.notify!=="boolean") settings.notify=true;
 var checks=load(C_KEY,null)||{};
 (function prune(){
   var cut=ymd(addDays(new Date(),-21));
@@ -619,7 +645,7 @@ function sfx(name){
 }
 
 /* Keep the screen on while the page is open. */
-var lock=null,canWake=("wakeLock" in navigator);
+var lock=null,canWake=!NATIVE&&("wakeLock" in navigator);
 function requestWake(){
   if(!canWake||!settings.awake||document.hidden||lock) return;
   try{
@@ -862,6 +888,7 @@ function renderPlan(now){
       save(S_KEY,settings);
       sfx("toggle");
       renderAll(new Date(),false);
+      scheduleSoon(true);
     });
     od.append(b);
   });
@@ -933,6 +960,7 @@ function setToday(kind){
   save(S_KEY,settings);
   sfx("toggle");
   renderAll(new Date(),true);
+  scheduleSoon(true);
 }
 function toggleSound(){
   settings.sound=!settings.sound;
@@ -966,7 +994,97 @@ $("copyLink").addEventListener("click",function(){
 });
 document.addEventListener("pointerdown",function(){unlock();if(settings.awake&&!lock) requestWake();},{passive:true});
 document.addEventListener("keydown",unlock);
-document.addEventListener("visibilitychange",function(){if(!document.hidden){tick();requestWake();}});
+document.addEventListener("visibilitychange",function(){if(!document.hidden){tick();requestWake();reschedule(false);checkUpdate();}});
+
+/* Android app: a local notification at the start of every block. */
+var NOTIF_DAYS=10,CHANNEL="blocks";
+var LN=NATIVE?((CAP.Plugins&&CAP.Plugins.LocalNotifications)||(typeof CAP.registerPlugin==="function"?CAP.registerPlugin("LocalNotifications"):null)):null;
+var notif={perm:"unknown",count:0,next:null,error:"",busy:false,last:0,sig:"",timer:null};
+function notifPlan(now){
+  var out=[],start=startOfDay(now),id=1;
+  for(var d=0;d<NOTIF_DAYS;d++){
+    timeline(addDays(start,d),settings).forEach(function(b){
+      if(b.startAt<=now) return;
+      out.push({id:id++,at:b.startAt,title:b.title,body:hhmm(b.startAt)+"–"+hhmm(b.endAt)+(b.detail?" · "+b.detail:"")});
+    });
+  }
+  var keep=new Date(start.getFullYear(),start.getMonth(),start.getDate()+NOTIF_DAYS-1,12,5);
+  if(keep>now) out.push({id:id++,at:keep,title:"Open Orders today",body:"Open the app so your block reminders keep coming."});
+  out.sort(function(a,b){return a.at-b.at;});
+  return out;
+}
+function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify]);}
+function errText(e){return (e&&e.message)||String(e);}
+function ensureChannel(){
+  if(!LN) return Promise.resolve();
+  return LN.createChannel({id:CHANNEL,name:"Block starts",description:"A notification when each block of your day starts",importance:4,visibility:1,vibration:true,lights:true,lightColor:"#1E5BD0"}).catch(function(){});
+}
+function toNative(n){return {id:n.id,title:n.title,body:n.body,channelId:CHANNEL,smallIcon:"ic_stat_orders",iconColor:"#1E5BD0",schedule:{at:n.at,allowWhileIdle:true}};}
+function renderNotif(){
+  if(!NATIVE) return;
+  var tog=$("notifTog"),txt;
+  tog.setAttribute("aria-pressed",String(settings.notify));
+  tog.textContent=settings.notify?"On":"Off";
+  $("notifAllow").hidden=notif.perm==="granted";
+  if(notif.error) txt="Could not set the reminders: "+notif.error;
+  else if(notif.perm==="denied") txt="Notifications are blocked for Orders. Tap Allow notifications, or turn them on in Android's settings for the app.";
+  else if(notif.perm!=="granted") txt="Tap Allow notifications so each block can reach you.";
+  else if(!settings.notify) txt="Reminders are off.";
+  else if(notif.busy) txt="Setting the reminders.";
+  else if(notif.next) txt="Next: "+DOW[notif.next.at.getDay()]+" "+hhmm(notif.next.at)+", "+notif.next.title+". "+notif.count+" reminders set for the next "+NOTIF_DAYS+" days.";
+  else txt="No reminders set yet.";
+  $("notifStatus").textContent=txt;
+}
+function reschedule(force){
+  if(!LN||notif.busy) return Promise.resolve();
+  var sig=settingsSig();
+  if(!force&&sig===notif.sig&&Date.now()-notif.last<6*3600*1000) return Promise.resolve();
+  notif.busy=true;notif.error="";renderNotif();
+  return LN.checkPermissions().then(function(p){
+    notif.perm=p.display;
+    if(p.display!=="granted") return null;
+    return LN.getPending().then(function(pend){
+      var old=((pend&&pend.notifications)||[]).map(function(n){return {id:n.id};});
+      return old.length?LN.cancel({notifications:old}):null;
+    }).then(function(){
+      if(!settings.notify){notif.count=0;notif.next=null;return null;}
+      var plan=notifPlan(new Date());
+      return LN.schedule({notifications:plan.map(toNative)}).then(function(){notif.count=plan.length;notif.next=plan[0]||null;});
+    }).then(function(){notif.sig=sig;notif.last=Date.now();});
+  }).catch(function(e){notif.error=errText(e);}).then(function(){notif.busy=false;renderNotif();});
+}
+function scheduleSoon(force){if(!LN) return;clearTimeout(notif.timer);notif.timer=setTimeout(function(){reschedule(force);},700);}
+function askPermission(){
+  return LN.requestPermissions().then(function(q){
+    notif.perm=q.display;
+    if(q.display==="granted") return ensureChannel().then(function(){return reschedule(true);});
+    renderNotif();
+  });
+}
+function checkUpdate(){
+  if(!NATIVE||navigator.onLine===false) return;
+  fetch("https://api.github.com/repos/jpvanacor/orders-of-the-day/releases/latest",{cache:"no-store"})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(j){
+      if(!j||!j.tag_name) return;
+      var v=parseInt(String(j.tag_name).replace(/[^0-9]/g,""),10);
+      if(v>APP_VERSION){$("updateText").textContent="Version "+v+" is ready";$("updateBar").href=APK_URL;$("updateBar").hidden=false;}
+    }).catch(function(){});
+}
+if(NATIVE){
+  $("notifTog").addEventListener("click",function(){settings.notify=!settings.notify;save(S_KEY,settings);sfx("toggle");renderNotif();reschedule(true);});
+  $("notifAllow").addEventListener("click",function(){if(LN) askPermission().catch(function(e){notif.error=errText(e);renderNotif();});});
+  $("notifTest").addEventListener("click",function(){
+    if(!LN) return;
+    var b=this;
+    function send(){return LN.schedule({notifications:[toNative({id:900000,title:"Orders",body:"Test: each block will arrive like this.",at:new Date(Date.now()+5000)})]});}
+    LN.checkPermissions().then(function(p){
+      if(p.display==="granted") return ensureChannel().then(send);
+      return LN.requestPermissions().then(function(q){notif.perm=q.display;renderNotif();if(q.display==="granted") return ensureChannel().then(send);throw new Error("notifications are not allowed");});
+    }).then(function(){b.textContent="Sent, wait 5 s";setTimeout(function(){b.textContent="Send a test";},5000);})
+      .catch(function(e){notif.error=errText(e);renderNotif();});
+  });
+}
 
 var deferredInstall=null;
 function isStandalone(){try{return window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;}catch(e){return false;}}
@@ -982,7 +1100,19 @@ $("installBtn").addEventListener("click",function(){
 });
 $("appLink").textContent=APP_URL;
 renderInstall();
-if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
+$("installSec").hidden=NATIVE;
+$("apkSec").hidden=NATIVE;
+$("notifSec").hidden=!NATIVE;
+$("appVersion").textContent="Version "+APP_VERSION+(NATIVE?" · Android app":" · web app");
+if(!NATIVE&&"serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
+if(NATIVE&&LN){
+  ensureChannel().then(function(){return LN.checkPermissions();}).then(function(p){
+    notif.perm=p.display;
+    if(p.display==="granted") return reschedule(true);
+    if(!settings.askedNotif){settings.askedNotif=true;save(S_KEY,settings);return askPermission();}
+  }).catch(function(e){notif.error=errText(e);}).then(renderNotif);
+  checkUpdate();
+}
 
 save(S_KEY,settings);
 save(C_KEY,checks);

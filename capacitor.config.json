@@ -1,0 +1,18 @@
+{
+  "appId": "io.github.jpvanacor.orders",
+  "appName": "Orders",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#101920"
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_orders",
+      "iconColor": "#1E5BD0"
+    }
+  }
+}
