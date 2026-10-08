@@ -400,6 +400,7 @@ function dayBlocks(c){
     add("people",start,w[0],"people",title,detail,items);
     add("wind",w[0],w[1],"routine","Wind down","Journal 3 lines. Screens off.",[
       ["journal","Journal 3 lines: what worked, what derailed you, tomorrow's first move"],
+      ["teeth","Brush your teeth"],
       ["clothes",c.trainTomorrow?"Lay out tomorrow's clothes and gym bag":"Lay out tomorrow's clothes"],
       ["phone","Phone charging across the room"],
       ["screens","Screens off"]]);
@@ -424,25 +425,27 @@ function dayBlocks(c){
     if(c.office){
       add("study","08:30","09:00","study","Study","Phone in the drawer. New material.",[["phone","Phone in the drawer"],["new","New material"]]);
       add("commute","09:00","10:00","commute","Commute","Anki or an audio class on the way.",[["anki","Anki or an audio class"]]);
-      add("work1","10:00","12:00","work","Work","At the office.");
-      add("lunch","12:00","13:00","meal","Lunch and a walk","Away from the desk, then a 10-minute walk.",[["lunch","Lunch away from the desk"],["walk","10-minute walk"]]);
+      add("work1","10:00","11:50","work","Work","At the office.");
+      add("defrost","11:50","12:00","meal","Defrost lunch","Put lunch in to defrost, then keep working until 12:00.",[["start","Put lunch in to defrost"]]);
+      add("lunch","12:00","13:00","meal","Lunch and a walk","Away from the desk, then a 10-minute walk. If it rains, move around indoors.",[["lunch","Lunch away from the desk"],["teeth","Brush your teeth"],["walk","10-minute walk (rain: move around indoors)"]]);
       add("work2","13:00","19:00","work","Work","At the office.");
       var back=[["top3","Before leaving: write tomorrow's top 3"],["anki","Anki or an audio class"]];
       if(wed) back.push(["topup","On the way: buy fruit, bread and milk"]);
       add("commute2","19:00","20:00","commute","Commute home","Anki or an audio class.",back);
-      add("dinner","20:00","20:40","meal","Dinner","Dishes right after.",[["dishes","Dishes right after"]]);
+      add("dinner","20:00","20:40","meal","Dinner","Defrost first, 10 minutes. Dishes right after.",[["defrost","Put dinner in to defrost"],["dishes","Dishes right after"]]);
       add("reset","20:40","21:00","home","House reset",zone+".",reset);
       if(c.dow===5) tail("21:00","Time with people","Go out or stay in with people.");
       else tail("21:00","Time with people","Or a book. No screens.");
     } else {
       add("study","08:30","10:00","study","Study",train?"Phone in the drawer. Anki first, then new material.":"Phone in the drawer. Keep going with new material.",
         train?[["phone","Phone in the drawer"],["anki","Anki reviews"],["new","New material"]]:[["phone","Phone in the drawer"],["new","New material"]]);
-      add("work1","10:00","12:00","work","Work","From home.");
-      var lunch=[["lunch","Lunch away from the desk"],["dishes","Dishes right after"],["walk","10-minute walk"]];
+      add("work1","10:00","11:50","work","Work","From home.");
+      add("defrost","11:50","12:00","meal","Defrost lunch","Put lunch in to defrost, then keep working until 12:00.",[["start","Put lunch in to defrost"]]);
+      var lunch=[["lunch","Lunch away from the desk"],["dishes","Dishes right after"],["teeth","Brush your teeth"],["walk","10-minute walk (rain: move around indoors)"]];
       if(wed) lunch.push(["topup","On the walk: buy fruit, bread and milk"]);
-      add("lunch","12:00","13:00","meal","Lunch and a walk","Away from the desk, then a 10-minute walk.",lunch);
+      add("lunch","12:00","13:00","meal","Lunch and a walk","Away from the desk, then a 10-minute walk. If it rains, move around indoors.",lunch);
       add("work2","13:00","19:00","work","Work","From home.");
-      add("shutdown","19:00","19:15","plan","Shut down work","Write tomorrow's top 3, then close everything.",[["top3","Write tomorrow's top 3"],["close","Close everything"]]);
+      add("shutdown","19:00","19:15","plan","Shut down work","Dinner in to defrost, write tomorrow's top 3, then close everything.",[["defrost","Put dinner in to defrost"],["top3","Write tomorrow's top 3"],["close","Close everything"]]);
       add("dinner","19:15","20:00","meal","Dinner","Dishes right after.",[["dishes","Dishes right after"]]);
       add("reset","20:00","20:20","home","House reset",zone+".",reset);
       if(c.dow===5) tail("20:20","Time with people","Go out or stay in with people.");
@@ -455,7 +458,7 @@ function dayBlocks(c){
     add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
     add("study","08:00","11:00","study","Study, 3 hours","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],["work","Questions or new material"],["breaks","10-minute break each hour"]]);
     add("train","11:00","12:00","body","Train: skills","Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Skills session"]]);
-    add("lunch","12:00","13:00","meal","Lunch","Dishes right after.",[["dishes","Dishes right after"]]);
+    add("lunch","12:00","13:00","meal","Lunch","Start the defrost and shower while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     var err=[["list","Buy everything on Friday's list"]];
     if(c.firstSat){err.push(["restock","Restock cleaning and hygiene supplies","Monthly"]);err.push(["bills","Pay bills and check subscriptions","Monthly"]);}
     if(c.lastSat) err.push(["haircut","Haircut","Monthly"]);
@@ -474,8 +477,8 @@ function dayBlocks(c){
   } else {
     add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
     add("study","08:00","11:00","study","Study, 3 hours","Review the week.",[["phone","Phone in the drawer"],["mistakes","Go over the week's mistakes"],["anki","Anki reviews"],["summaries","Update your summaries"]]);
-    add("walk","11:00","12:00","body","Walk outside","One hour outdoors.");
-    add("lunch","12:00","13:00","meal","Lunch","Dishes right after.",[["dishes","Dishes right after"]]);
+    add("walk","11:00","12:00","body","Walk outside","One hour outdoors. If it rains, 30 minutes of stretching at home.");
+    add("lunch","12:00","13:00","meal","Lunch","Start the defrost, then wash up while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     add("rest","13:00","17:00","people","Time with people and rest","People, a book or outside. No gaming, no series.");
     var rs=[["cook","Cook for Mon–Wed"],["journal","Read this week's journal"],["money","Log the week's spending in Central"],["plan","Plan the week in TickTick"],["recycling","Take the recycling out"]];
     if(c.firstSun){
@@ -488,7 +491,7 @@ function dayBlocks(c){
       if(c.month===3) rs.push(["tax","File the income tax return this month","Yearly"]);
     }
     add("weekly","17:00","18:30","plan","Weekly reset","Cook, review, plan the week.",rs);
-    add("call","18:30","19:00","people","Call someone","Someone you don't see often.",[["call","Call someone you don't see often"]]);
+    add("call","18:30","19:00","people","Call someone","Someone you don't see often. At 18:50, put dinner in to defrost.",[["call","Call someone you don't see often"],["defrost","At 18:50, put dinner in to defrost"]]);
     tail("19:00","Dinner and time with people","Dishes right after. No screens.",[["dishes","Dishes right after"]]);
   }
   return B;
@@ -545,7 +548,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=2;
+var APP_VERSION=3;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
