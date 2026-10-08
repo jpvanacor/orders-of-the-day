@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Orders of the Day</title>
+<meta name="description" content="What to do right now, today's timeline and this month's recurring chores.">
+<meta name="theme-color" content="#E9EDF0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1317" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Orders">
+<style>
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/barlow-condensed-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/barlow-condensed-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:800;font-display:swap;src:url(fonts/barlow-condensed-latin-800-normal.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Hyperlegible";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/atkinson-hyperlegible-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Hyperlegible";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/atkinson-hyperlegible-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Spline Sans Mono";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/spline-sans-mono-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Spline Sans Mono";font-style:normal;font-weight:500;font-display:swap;src:url(fonts/spline-sans-mono-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Spline Sans Mono";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/spline-sans-mono-latin-600-normal.woff2) format("woff2")}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;padding-top:env(safe-area-inset-top,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+.hs-p{margin:.25rem 0 .85rem}
+#installBtn{margin-bottom:.9rem}
+/* Layout: one phone-width column. The current order is a colored sign that flips in like a departure board, the day is a line of colored stops, tabs are pinned to the bottom. */
+:root{
+  --bg:#E9EDF0; --surface:#F7F9FA; --ink:#101920; --muted:#56636E; --line:#CFD7DD; --soft:#DDE3E8; --on-cat:#FFFFFF;
+  --cat-sleep:#3B4196; --cat-routine:#0B6F78; --cat-body:#23752F; --cat-study:#1E5BD0; --cat-work:#46515E; --cat-home:#8A5C0C;
+  --cat-meal:#B2420F; --cat-people:#A82B74; --cat-mind:#6E42B8; --cat-commute:#4F6A84; --cat-plan:#566312;
+  --font-display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"Spline Sans Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1317; --surface:#161D23; --ink:#E6ECF0; --muted:#94A2AD; --line:#27323B; --soft:#202A32; --on-cat:#0E1317;
+    --cat-sleep:#A3A8F7; --cat-routine:#57CCD5; --cat-body:#6FD17B; --cat-study:#8AAEFF; --cat-work:#AEB8C4; --cat-home:#E8B357;
+    --cat-meal:#FF9468; --cat-people:#F286C7; --cat-mind:#C0A4F7; --cat-commute:#A6C1DC; --cat-plan:#C6D56A;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1317; --surface:#161D23; --ink:#E6ECF0; --muted:#94A2AD; --line:#27323B; --soft:#202A32; --on-cat:#0E1317;
+  --cat-sleep:#A3A8F7; --cat-routine:#57CCD5; --cat-body:#6FD17B; --cat-study:#8AAEFF; --cat-work:#AEB8C4; --cat-home:#E8B357;
+  --cat-meal:#FF9468; --cat-people:#F286C7; --cat-mind:#C0A4F7; --cat-commute:#A6C1DC; --cat-plan:#C6D56A;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:400 1rem/1.45 var(--font-body);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.wrap{max-width:34rem;margin:0 auto;padding-inline:16px;padding-block:.75rem calc(5.5rem + env(safe-area-inset-bottom,0px))}
+
+/* Header and toolbar */
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;padding-block:.25rem .9rem}
+.brand{font:800 .95rem/1 var(--font-display);letter-spacing:.16em;text-transform:uppercase}
+.date{color:var(--muted);margin-top:.35rem}
+.clock{font:600 2.25rem/1 var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.toolbar{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+.tools{margin-left:auto;display:flex;gap:.4rem}
+.daytype{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--surface)}
+.daytype button{appearance:none;border:0;background:transparent;color:var(--muted);font:700 .75rem/1 var(--font-body);letter-spacing:.1em;text-transform:uppercase;padding:.75rem .95rem;cursor:pointer}
+.daytype button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.ibtn{appearance:none;position:relative;width:2.65rem;height:2.65rem;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:50%;display:grid;place-items:center;cursor:pointer}
+.ibtn svg{width:1.25rem;height:1.25rem}
+.ibtn[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.wait{position:absolute;top:.1rem;right:.1rem;width:.6rem;height:.6rem;border-radius:50%;background:var(--cat-meal);box-shadow:0 0 0 2px var(--bg);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
+
+/* Now card */
+.now{background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.sign{position:relative;background:var(--c);color:var(--on-cat);padding:1rem 1.1rem 1.25rem;display:grid;gap:.45rem}
+.eyebrow{font:700 .74rem/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase}
+.sign h1{margin:0;font:800 clamp(2.5rem,12vw,3.5rem)/.92 var(--font-display);text-transform:uppercase;letter-spacing:.005em;text-wrap:balance;overflow-wrap:anywhere;perspective:700px}
+.sign p{margin:0;font-size:1.05rem;line-height:1.35}
+.w{white-space:nowrap}
+.ch{display:inline-block;transform-origin:50% 55%;backface-visibility:hidden;animation:flap .55s cubic-bezier(.3,1.35,.5,1) both;animation-delay:calc(var(--i)*32ms + 140ms)}
+@keyframes flap{from{transform:rotateX(-100deg);opacity:0}to{transform:none;opacity:1}}
+.now.enter .sign{animation:wipe .65s cubic-bezier(.25,.8,.2,1)}
+@keyframes wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.now.enter .meter,.now.enter #nowChecks{animation:rise .5s .3s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+.stamp{position:absolute;top:.85rem;right:.9rem;font:800 .95rem/1 var(--font-display);letter-spacing:.14em;text-transform:uppercase;color:var(--on-cat);border:2px solid currentColor;border-radius:3px;padding:.3rem .5rem .22rem;transform:rotate(-7deg)}
+.stamp.pop{animation:stamp .5s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes stamp{from{opacity:0;transform:rotate(-7deg) scale(2.3)}to{opacity:1;transform:rotate(-7deg) scale(1)}}
+.meter{padding:1rem 1.1rem .95rem;display:grid;gap:.7rem}
+.clockrow{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem 1rem;flex-wrap:wrap}
+.range{font:500 .95rem/1 var(--font-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.left{font:600 2.1rem/1 var(--font-mono);font-variant-numeric:tabular-nums}
+.left small{font:700 .72rem/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+#nowLeft{display:inline-block;transform-origin:right center;transition:color .3s}
+.left.final #nowLeft{color:var(--c)}
+.left.beat #nowLeft{animation:beat .4s ease-out}
+@keyframes beat{30%{transform:scale(1.14)}}
+.bar{height:6px;background:var(--soft);border-radius:3px;overflow:hidden}
+.bar span{position:relative;display:block;height:100%;width:0;background:var(--c);overflow:hidden;transition:width .9s linear}
+.bar span::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--surface) 60%,transparent),transparent);transform:translateX(-100%);animation:shine 3s ease-in-out infinite}
+@keyframes shine{60%,100%{transform:translateX(100%)}}
+#nowChecks{border-top:1px solid var(--line);padding:0 1.1rem .4rem}
+.next{display:flex;align-items:center;gap:.6rem;margin:0;padding:1rem .15rem .5rem;flex-wrap:wrap}
+.next .k{font:700 .72rem/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.next .dot{width:.7rem;height:.7rem;border-radius:50%;background:var(--c);flex:none}
+.next time{font:500 1rem/1 var(--font-mono);font-variant-numeric:tabular-nums}
+.rule{margin:.5rem .15rem 0;color:var(--muted);font-size:.92rem;max-width:62ch}
+.rule b{color:var(--ink)}
+
+/* Checklists */
+.checks{list-style:none;margin:0;padding:0}
+.checks li+li label{border-top:1px solid var(--line)}
+.checks label{display:flex;align-items:flex-start;gap:.75rem;padding:.7rem 0;cursor:pointer;min-width:0}
+.checks input{appearance:none;-webkit-appearance:none;flex:none;width:1.4rem;height:1.4rem;margin:0;border:2px solid var(--muted);border-radius:4px;background:var(--surface);display:grid;place-content:center;cursor:pointer;transition:background-color .15s,border-color .15s}
+.checks input::after{content:"";width:.72rem;height:.4rem;border-left:2.5px solid var(--on-cat);border-bottom:2.5px solid var(--on-cat);transform:translateY(-1px) rotate(-45deg) scale(0);transition:transform .22s cubic-bezier(.3,1.6,.5,1)}
+.checks input:checked{background:var(--c);border-color:var(--c)}
+.checks input:checked::after{transform:translateY(-1px) rotate(-45deg) scale(1)}
+.checks input.just{animation:pop .4s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:scale(.7)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+.checks input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.checks .txt{flex:1;min-width:0;padding-top:.05rem;transition:color .3s}
+.s{background:linear-gradient(currentColor,currentColor) no-repeat 0 58%/0 1.5px;transition:background-size .35s ease;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.checks input:checked+.txt{color:var(--muted)}
+.checks input:checked+.txt .s{background-size:100% 1.5px}
+.tag{flex:none;align-self:center;font:600 .66rem/1 var(--font-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--c,var(--muted));border:1px solid currentColor;border-radius:3px;padding:.28rem .38rem;white-space:nowrap}
+.bit{position:fixed;z-index:60;pointer-events:none;will-change:transform,opacity}
+
+/* Day */
+.chips{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.3rem;margin-bottom:1rem}
+.chip{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:4px;padding:.5rem 0;display:grid;justify-items:center;gap:.25rem;cursor:pointer;min-width:0}
+.chip .cd{font:700 .66rem/1 var(--font-body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.chip .cn{font:600 1.05rem/1 var(--font-mono)}
+.chip.is-today .cn{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.25em}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.chip[aria-pressed="true"] .cd{color:var(--bg)}
+.dayhead{margin-bottom:1rem}
+.dayhead h2{margin:0;font:800 1.6rem/1 var(--font-display);text-transform:uppercase;letter-spacing:.01em;text-wrap:balance}
+.dayhead p{margin:.35rem 0 0;color:var(--muted)}
+.rail{list-style:none;margin:0;padding:0}
+.stop{display:grid;grid-template-columns:3.1rem 1.4rem minmax(0,1fr);column-gap:.45rem}
+.stop .t{font:500 .82rem/1.2 var(--font-mono);color:var(--muted);text-align:right;padding-top:.32rem;font-variant-numeric:tabular-nums}
+.seg{position:relative}
+.seg::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:4px;margin-left:-2px;background:var(--c)}
+.seg::after{content:"";position:absolute;left:50%;top:.3rem;width:.9rem;height:.9rem;margin-left:-.45rem;border-radius:50%;background:var(--surface);border:3px solid var(--c)}
+.here{position:absolute;left:50%;top:var(--p,0%);z-index:1;width:.85rem;height:.85rem;margin:-.425rem 0 0 -.425rem;border-radius:50%;background:var(--ink);border:2px solid var(--bg);transition:top 1s linear}
+.stop .body{padding-block:.2rem 1.15rem;min-width:0}
+.head{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap}
+.ttl{font:700 1.02rem/1.25 var(--font-body)}
+.len{font:500 .78rem/1 var(--font-mono);color:var(--muted)}
+.cnt{margin-left:auto;font:600 .78rem/1 var(--font-mono);color:var(--muted);white-space:nowrap}
+.cnt::after{content:" \25BE"}
+details[open] .cnt::after{content:" \25B4"}
+.cnt.is-done{color:var(--c)}
+.nowtag{font:700 .64rem/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;background:var(--c);color:var(--on-cat);padding:.25rem .4rem;border-radius:3px}
+.sub{margin:.25rem 0 0;color:var(--muted);font-size:.92rem}
+details summary{list-style:none;cursor:pointer}
+details summary::-webkit-details-marker{display:none}
+details summary:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:2px}
+details .checks{margin-top:.3rem}
+.stop.is-now .seg::before{width:8px;margin-left:-4px}
+.stop.is-now .seg::after{background:var(--c);box-shadow:0 0 0 .3rem color-mix(in srgb,var(--c) 28%,transparent);animation:beacon 2.4s ease-in-out infinite}
+.stop.is-now .t{color:var(--ink);font-weight:600}
+.stop.is-past .t,.stop.is-past .body{opacity:.5}
+.stop.is-past .seg::before,.stop.is-past .seg::after{opacity:.4}
+@keyframes beacon{50%{box-shadow:0 0 0 .55rem color-mix(in srgb,var(--c) 8%,transparent)}}
+.rail.cascade .stop{animation:stopIn .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*25ms)}
+@keyframes stopIn{from{opacity:0;transform:translateX(-12px)}}
+.view.in{animation:viewIn .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes viewIn{from{opacity:0;transform:translateY(10px)}}
+
+/* Plan */
+.sec{margin-bottom:1.9rem}
+.sec>h2{margin:0 0 .75rem;font:800 1.35rem/1 var(--font-display);text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+.sub-h{font:500 .85rem/1 var(--font-mono);color:var(--muted);text-transform:none;letter-spacing:0}
+.hint{margin:.65rem 0 0;color:var(--muted);font-size:.92rem;max-width:62ch}
+.toggles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.35rem}
+.dtog{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:.75rem 0;font:700 .8rem/1 var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);cursor:pointer;min-width:0}
+.dtog[aria-pressed="true"]{background:var(--cat-commute);border-color:var(--cat-commute);color:var(--on-cat)}
+.month{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.month>li{display:grid;grid-template-columns:4rem minmax(0,1fr);gap:.8rem;padding-block:.75rem;border-bottom:1px solid var(--line)}
+.month>li.is-past{opacity:.5}
+.md{font:600 .95rem/1.2 var(--font-mono);font-variant-numeric:tabular-nums}
+.md small{display:block;font:700 .68rem/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem}
+.month ul{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+.month ul li{display:flex;gap:.6rem;align-items:baseline;justify-content:space-between}
+.month .tag{color:var(--muted)}
+.ref{display:grid;grid-template-columns:5.6rem minmax(0,1fr);gap:.6rem .8rem;margin:0}
+.ref dt{font:700 .72rem/1.5 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.ref dd{margin:0;min-width:0}
+.rules{margin:0;padding-left:1.1rem;display:grid;gap:.5rem;max-width:62ch}
+.switchrow{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.switchrow+.switchrow{margin-top:.9rem}
+.switch{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:.55rem 1rem;font:700 .78rem/1 var(--font-body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:pointer;min-width:4.4rem;flex:none}
+.switch[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.homescreen{display:grid;grid-template-columns:5.5rem minmax(0,1fr);gap:1rem;align-items:start}
+.homescreen img{width:5.5rem;height:5.5rem;border-radius:22%;display:block}
+.hs-k{margin:0;font:700 .72rem/1.4 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.steps{margin:.3rem 0 .9rem;padding-left:1.15rem;display:grid;gap:.35rem}
+.linkrow{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.linkrow code{flex:1 1 13rem;min-width:0;font:500 .8rem/1.35 var(--font-mono);background:var(--soft);padding:.5rem .6rem;border-radius:4px;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere}
+
+/* Tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs button{appearance:none;border:0;background:transparent;padding:1rem .5rem .95rem;font:700 1.05rem/1 var(--font-display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);cursor:pointer;box-shadow:inset 0 3px 0 transparent}
+.tabs button[aria-current="page"]{color:var(--ink);box-shadow:inset 0 3px 0 var(--ink)}
+.chip,.dtog,.tabs button,.daytype button,.switch,.ibtn{transition:transform .12s ease,background-color .2s,color .2s,border-color .2s,box-shadow .2s}
+.chip:active,.dtog:active,.tabs button:active,.daytype button:active,.switch:active,.ibtn:active{transform:scale(.94)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand">Orders of the Day</div>
+      <div class="date" id="dateLabel">Thursday 8 October</div>
+    </div>
+    <div class="clock" id="clock" aria-label="Current time">10:12</div>
+  </header>
+
+  <main>
+    <section id="view-now" class="view" aria-label="Now">
+      <div class="toolbar">
+        <div class="daytype" id="dayType" role="group" aria-label="Where you work today">
+          <button type="button" id="dtHome" aria-pressed="true">Home day</button>
+          <button type="button" id="dtOffice" aria-pressed="false">Office day</button>
+        </div>
+        <div class="tools">
+          <button type="button" class="ibtn" id="sndBtn" aria-pressed="true" aria-label="Sound on" title="Sound">
+            <svg id="sndOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+            <svg id="sndOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>
+            <span class="wait" id="sndWait" hidden></span>
+          </button>
+          <button type="button" class="ibtn" id="awakeBtn" aria-pressed="false" aria-label="Screen can sleep" title="Keep screen on">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          </button>
+        </div>
+      </div>
+      <article class="now" id="nowCard" style="--c:var(--cat-work)">
+        <div class="sign">
+          <span class="eyebrow" id="nowCat">Work</span>
+          <h1 id="nowTitle">Work</h1>
+          <p id="nowDetail">From home.</p>
+          <span class="stamp" id="stamp" hidden>Done</span>
+        </div>
+        <div class="meter">
+          <div class="clockrow">
+            <span class="range" id="nowRange">10:00–12:00</span>
+            <span class="left" id="leftWrap"><span id="nowLeft">1:48:00</span> <small>left</small></span>
+          </div>
+          <div class="bar" aria-hidden="true"><span id="nowBar"></span></div>
+        </div>
+        <div id="nowChecks" hidden></div>
+      </article>
+      <p class="next" id="nextRow" style="--c:var(--cat-meal)"><span class="k">Next</span><span class="dot" aria-hidden="true"></span><time id="nextTime">12:00</time><b id="nextTitle">Lunch and a walk</b></p>
+      <p class="rule"><b>Standing rule.</b> Missed a block? Drop it and do what this screen says now. Never try to catch up.</p>
+    </section>
+
+    <section id="view-day" class="view" aria-label="Day" hidden>
+      <div class="chips" id="dayChips"></div>
+      <div class="dayhead">
+        <h2 id="dayTitle">Thursday 8 October</h2>
+        <p><span id="dayKind">Home day</span> · <span id="dayProgress"></span></p>
+      </div>
+      <ol class="rail" id="rail"></ol>
+    </section>
+
+    <section id="view-plan" class="view" aria-label="Plan" hidden>
+      <section class="sec">
+        <h2>Office days</h2>
+        <div class="toggles" id="officeDays"></div>
+        <p class="hint" id="officeHint"></p>
+      </section>
+      <section class="sec">
+        <h2>This month <span class="sub-h" id="monthName">October 2026</span></h2>
+        <ul class="month" id="monthList"></ul>
+        <p class="hint">Book of the month: <span id="bookMonth">philosophy</span>. One non-study book, on paper.</p>
+      </section>
+      <section class="sec">
+        <h2>Every week</h2>
+        <dl class="ref">
+          <dt>Training</dt><dd>Mon push · Wed pull · Fri legs and core · Sat skills</dd>
+          <dt>House reset</dt><dd>Mon bathroom · Tue floors · Wed kitchen and laundry · Thu fold laundry and bedroom · Fri fridge and grocery list</dd>
+          <dt>Saturday</dt><dd>Groceries 13:00 · weekly cleaning 14:00</dd>
+          <dt>Sunday</dt><dd>Weekly reset 17:00 · call someone 18:30</dd>
+          <dt>Yearly</dt><dd>Dentist in March and September · full checkup in March · income tax return in April</dd>
+        </dl>
+      </section>
+      <section class="sec">
+        <h2>Rules</h2>
+        <ul class="rules">
+          <li>Missed a block? Drop it and do what the clock says now. Never try to catch up.</li>
+          <li>Dishes right after every meal. The sink is empty before bed.</li>
+          <li>Phone in the drawer for every study block.</li>
+          <li>No gaming, no series. Evenings are for people, books and sleep.</li>
+          <li>The phone charges across the room at night.</li>
+        </ul>
+      </section>
+      <section class="sec">
+        <h2>Sound and screen</h2>
+        <div class="switchrow"><span>Sound effects: the chime for each new order, the last 3 seconds, checks and finished blocks</span><button type="button" class="switch" id="soundTog" aria-pressed="true">On</button></div>
+        <div class="switchrow" id="awakeRow"><span>Keep the screen on while this page is open, so the chime can reach you</span><button type="button" class="switch" id="awakeTog" aria-pressed="false">Off</button></div>
+        <p class="hint">Sound starts after your first tap on the page and plays only while the page is open.</p>
+      </section>
+      <section class="sec">
+        <h2>On your home screen</h2>
+        <div class="homescreen">
+          <img src="icons/icon-192.png" alt="Orders of the Day icon: a colored day line with the current stop lit" width="88" height="88">
+          <div>
+            <p class="hint" id="installedNote" hidden>Installed. Open it from the icon on your home screen.</p>
+            <div id="installHow">
+              <button type="button" class="switch" id="installBtn" hidden>Install app</button>
+              <p class="hs-k">Android</p>
+              <p class="hs-p">In Chrome, open the &#8942; menu and tap Install app.</p>
+              <p class="hs-k">iPhone</p>
+              <p class="hs-p">In Safari, tap Share, then Add to Home Screen.</p>
+            </div>
+          </div>
+        </div>
+        <div class="linkrow"><code id="appLink"></code><button type="button" class="switch" id="copyLink">Copy link</button></div>
+        <p class="hint">Checks and settings stay on this phone. After the first visit the app also opens without internet.</p>
+        <p class="hint" id="appVersion">Version 1 · 8 Oct 2026</p>
+      </section>
+    </section>
+  </main>
+</div>
+
+<nav class="tabs" aria-label="Views">
+  <button type="button" id="tab-now" aria-current="page">Now</button>
+  <button type="button" id="tab-day">Day</button>
+  <button type="button" id="tab-plan">Plan</button>
+</nav>
+
+<script id="logic">
+"use strict";
+var TRAIN_DAYS=[1,3,5,6];
+function pad(n){return String(n).padStart(2,"0");}
+function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+function startOfDay(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+function addDays(d,n){return new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);}
+function toMin(s){var p=s.split(":");return Number(p[0])*60+Number(p[1]);}
+function fmtMin(m){m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+":"+pad(m%60);}
+function daysInMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,0).getDate();}
+function bookOfMonth(d){return d.getMonth()%2===1?"philosophy":"fiction";}
+function deepJob(d){return ["Clean the windows","Clean the oven","Clean behind the furniture","Sort one closet"][d.getMonth()%4];}
+
+function isOfficeDay(date,settings){
+  var dow=date.getDay();
+  if(dow<1||dow>5) return false;
+  var ov=settings&&settings.overrides?settings.overrides[ymd(date)]:undefined;
+  if(ov==="office") return true;
+  if(ov==="home") return false;
+  return !!(settings&&Array.isArray(settings.officeDays)&&settings.officeDays.indexOf(dow)>=0);
+}
+
+function dayContext(date,settings){
+  var d=startOfDay(date),dow=d.getDay(),dom=d.getDate(),month=d.getMonth(),dim=daysInMonth(d);
+  return {date:d,key:ymd(d),dow:dow,dom:dom,month:month,
+    weekday:dow>=1&&dow<=5,office:isOfficeDay(d,settings),
+    firstSat:dow===6&&dom<=7,lastSat:dow===6&&dom+7>dim,firstSun:dow===0&&dom<=7,
+    quarter:[0,3,6,9].indexOf(month)>=0,
+    trainTomorrow:TRAIN_DAYS.indexOf((dow+1)%7)>=0,
+    book:bookOfMonth(d),deep:deepJob(d)};
+}
+
+function dayBlocks(c){
+  var B=[];
+  function add(key,start,end,cat,title,detail,items){
+    B.push({key:key,start:toMin(start),end:toMin(end),cat:cat,title:title,detail:detail||"",
+      items:(items||[]).map(function(x){return {id:key+"."+x[0],text:x[1],tag:x[2]||""};})});
+  }
+  var late=c.dow===5||c.dow===6;
+  var w=late?["23:15","23:30","23:45"]:["22:15","22:30","22:45"];
+  var nextWake=late?"07:30":"06:45";
+  function tail(start,title,detail,items){
+    add("people",start,w[0],"people",title,detail,items);
+    add("wind",w[0],w[1],"routine","Wind down","Journal 3 lines. Screens off.",[
+      ["journal","Journal 3 lines: what worked, what derailed you, tomorrow's first move"],
+      ["clothes",c.trainTomorrow?"Lay out tomorrow's clothes and gym bag":"Lay out tomorrow's clothes"],
+      ["phone","Phone charging across the room"],
+      ["screens","Screens off"]]);
+    add("bed",w[1],w[2],"mind","Read in bed","Paper book until lights out. This month: "+c.book+".");
+    add("sleep",w[2],w[2],"sleep","Sleep","Lights out. Wake at "+nextWake+".");
+  }
+  var wakeBase=[["feet","Feet on the floor, no snooze"],["water","Drink water"],["bed","Make the bed"]];
+
+  if(c.weekday){
+    var train={1:"push day",3:"pull day",5:"legs and core"}[c.dow];
+    var zone={1:"Quick bathroom clean: sink, toilet, mirror",2:"Sweep or vacuum every room",3:"Deep-clean the kitchen: stove, microwave, sink",4:"Fold and put away the laundry, tidy the bedroom",5:"Throw out anything old in the fridge and write the grocery list"}[c.dow];
+    var wed=c.dow===3;
+    var wake=wakeBase.slice();
+    if(wed) wake.push(["wash","Start the washing machine"]);
+    add("wake","06:45","07:00","routine","Wake up","Feet on the floor. No snooze.",wake);
+    if(train) add("early","07:00","08:00","body","Train: "+train,"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+train]]);
+    else add("early","07:00","08:00","study","Study","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],["new","New material"]]);
+    var bf=[["shower","Shower"],["eat","Breakfast"],["dishes","Dishes right after"]];
+    if(wed) bf.push(["hang","Hang the laundry"]);
+    add("breakfast","08:00","08:30","routine","Shower and breakfast","Dishes right after.",bf);
+    var reset=[["counters","Counters"],["trash","Trash out"],["zone",zone]];
+    if(c.office){
+      add("study","08:30","09:00","study","Study","Phone in the drawer. New material.",[["phone","Phone in the drawer"],["new","New material"]]);
+      add("commute","09:00","10:00","commute","Commute","Anki or an audio class on the way.",[["anki","Anki or an audio class"]]);
+      add("work1","10:00","12:00","work","Work","At the office.");
+      add("lunch","12:00","13:00","meal","Lunch and a walk","Away from the desk, then a 10-minute walk.",[["lunch","Lunch away from the desk"],["walk","10-minute walk"]]);
+      add("work2","13:00","19:00","work","Work","At the office.");
+      var back=[["top3","Before leaving: write tomorrow's top 3"],["anki","Anki or an audio class"]];
+      if(wed) back.push(["topup","On the way: buy fruit, bread and milk"]);
+      add("commute2","19:00","20:00","commute","Commute home","Anki or an audio class.",back);
+      add("dinner","20:00","20:40","meal","Dinner","Dishes right after.",[["dishes","Dishes right after"]]);
+      add("reset","20:40","21:00","home","House reset",zone+".",reset);
+      if(c.dow===5) tail("21:00","Time with people","Go out or stay in with people.");
+      else tail("21:00","Time with people","Or a book. No screens.");
+    } else {
+      add("study","08:30","10:00","study","Study",train?"Phone in the drawer. Anki first, then new material.":"Phone in the drawer. Keep going with new material.",
+        train?[["phone","Phone in the drawer"],["anki","Anki reviews"],["new","New material"]]:[["phone","Phone in the drawer"],["new","New material"]]);
+      add("work1","10:00","12:00","work","Work","From home.");
+      var lunch=[["lunch","Lunch away from the desk"],["dishes","Dishes right after"],["walk","10-minute walk"]];
+      if(wed) lunch.push(["topup","On the walk: buy fruit, bread and milk"]);
+      add("lunch","12:00","13:00","meal","Lunch and a walk","Away from the desk, then a 10-minute walk.",lunch);
+      add("work2","13:00","19:00","work","Work","From home.");
+      add("shutdown","19:00","19:15","plan","Shut down work","Write tomorrow's top 3, then close everything.",[["top3","Write tomorrow's top 3"],["close","Close everything"]]);
+      add("dinner","19:15","20:00","meal","Dinner","Dishes right after.",[["dishes","Dishes right after"]]);
+      add("reset","20:00","20:20","home","House reset",zone+".",reset);
+      if(c.dow===5) tail("20:20","Time with people","Go out or stay in with people.");
+      else {
+        add("study2","20:20","21:20","study","Study: questions","Phone in the drawer. One block of questions.",[["phone","Phone in the drawer"],["questions","One block of questions"],["mistakes","Note every mistake"]]);
+        tail("21:20","Time with people","Or a book. No screens.");
+      }
+    }
+  } else if(c.dow===6){
+    add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
+    add("study","08:00","11:00","study","Study, 3 hours","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],["work","Questions or new material"],["breaks","10-minute break each hour"]]);
+    add("train","11:00","12:00","body","Train: skills","Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Skills session"]]);
+    add("lunch","12:00","13:00","meal","Lunch","Dishes right after.",[["dishes","Dishes right after"]]);
+    var err=[["list","Buy everything on Friday's list"]];
+    if(c.firstSat){err.push(["restock","Restock cleaning and hygiene supplies","Monthly"]);err.push(["bills","Pay bills and check subscriptions","Monthly"]);}
+    if(c.lastSat) err.push(["haircut","Haircut","Monthly"]);
+    add("errands","13:00","14:00","home","Groceries and errands","Everything on Friday's list.",err);
+    var cl=[["linens","Bed linens and towels into the machine"],["mop","Mop the floors"],["shower","Deep-clean the shower"]];
+    if(c.firstSat) cl.push(["deep",c.deep,"Monthly"]);
+    if(c.firstSat&&c.quarter){
+      cl.push(["mattress","Rotate the mattress","Every 3 months"]);
+      cl.push(["brushes","Replace toothbrushes","Every 3 months"]);
+      cl.push(["wardrobe","Go through your clothes and donate what you didn't wear","Every 3 months"]);
+    }
+    add("cleaning","14:00","15:00","home","Weekly cleaning","Linens, floors, shower.",cl);
+    add("reading","15:00","16:00","mind","Reading","Hang the laundry first. This month: "+c.book+".",[["hang","Hang the laundry"],["read","Read the book of the month"]]);
+    add("study2","16:00","18:00","study","Study, 2 hours","Practice exam or questions.",[["phone","Phone in the drawer"],["exam","Practice exam or questions"],["mistakes","Note every mistake"]]);
+    tail("18:00","Time with people","No gaming, no series.",c.lastSat?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
+  } else {
+    add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
+    add("study","08:00","11:00","study","Study, 3 hours","Review the week.",[["phone","Phone in the drawer"],["mistakes","Go over the week's mistakes"],["anki","Anki reviews"],["summaries","Update your summaries"]]);
+    add("walk","11:00","12:00","body","Walk outside","One hour outdoors.");
+    add("lunch","12:00","13:00","meal","Lunch","Dishes right after.",[["dishes","Dishes right after"]]);
+    add("rest","13:00","17:00","people","Time with people and rest","People, a book or outside. No gaming, no series.");
+    var rs=[["cook","Cook for Mon–Wed"],["journal","Read this week's journal"],["money","Log the week's spending in Central"],["plan","Plan the week in TickTick"],["recycling","Take the recycling out"]];
+    if(c.firstSun){
+      rs.push(["mstudy","Monthly review: study progress","Monthly"]);
+      rs.push(["mmoney","Monthly review: money","Monthly"]);
+      rs.push(["mevents","Check next month's birthdays and events","Monthly"]);
+      rs.push(["digital","Digital cleanup: downloads, photos, backup","Monthly"]);
+      if(c.month===2){rs.push(["dentist","Book the dentist for this month","Yearly"]);rs.push(["checkup","Book a full checkup with blood work","Yearly"]);}
+      if(c.month===8) rs.push(["dentist","Book the dentist for this month","Yearly"]);
+      if(c.month===3) rs.push(["tax","File the income tax return this month","Yearly"]);
+    }
+    add("weekly","17:00","18:30","plan","Weekly reset","Cook, review, plan the week.",rs);
+    add("call","18:30","19:00","people","Call someone","Someone you don't see often.",[["call","Call someone you don't see often"]]);
+    tail("19:00","Dinner and time with people","Dishes right after. No screens.",[["dishes","Dishes right after"]]);
+  }
+  return B;
+}
+
+function timeline(date,settings){
+  var c=dayContext(date,settings),d=c.date,blocks=dayBlocks(c);
+  var nextStart=dayBlocks(dayContext(addDays(d,1),settings))[0].start;
+  return blocks.map(function(b){
+    var o={};
+    for(var k in b) o[k]=b[k];
+    o.day=c.key;
+    o.ctx=c;
+    o.startAt=new Date(d.getFullYear(),d.getMonth(),d.getDate(),0,b.start);
+    o.endAt=b.key==="sleep"
+      ?new Date(d.getFullYear(),d.getMonth(),d.getDate()+1,0,nextStart)
+      :new Date(d.getFullYear(),d.getMonth(),d.getDate(),0,b.end);
+    o.minutes=Math.round((o.endAt-o.startAt)/60000);
+    return o;
+  });
+}
+
+function findNow(now,settings){
+  var today=startOfDay(now),days=[addDays(today,-1),today];
+  for(var k=0;k<days.length;k++){
+    var tl=timeline(days[k],settings);
+    for(var i=0;i<tl.length;i++){
+      if(now>=tl[i].startAt&&now<tl[i].endAt){
+        var next=i+1<tl.length?tl[i+1]:timeline(addDays(days[k],1),settings)[0];
+        return {block:tl[i],next:next,index:i,timeline:tl};
+      }
+    }
+  }
+  return null;
+}
+
+function monthSpecials(date,settings){
+  var y=date.getFullYear(),m=date.getMonth(),dim=daysInMonth(date),out=[];
+  for(var d=1;d<=dim;d++){
+    var dt=new Date(y,m,d),items=[];
+    dayBlocks(dayContext(dt,settings)).forEach(function(b){
+      b.items.forEach(function(it){if(it.tag) items.push({text:it.text,tag:it.tag,block:b.title,time:fmtMin(b.start)});});
+    });
+    if(items.length) out.push({date:dt,key:ymd(dt),items:items});
+  }
+  return out;
+}
+</script>
+
+<script>
+(function(){
+"use strict";
+if(typeof document==="undefined") return;
+var APP_URL=location.origin+location.pathname;
+var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
+function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+var settings=load(S_KEY,null)||{};
+if(!Array.isArray(settings.officeDays)) settings.officeDays=[];
+if(!settings.overrides||typeof settings.overrides!=="object") settings.overrides={};
+if(typeof settings.sound!=="boolean") settings.sound=true;
+if(typeof settings.awake!=="boolean") settings.awake=false;
+var checks=load(C_KEY,null)||{};
+(function prune(){
+  var cut=ymd(addDays(new Date(),-21));
+  Object.keys(checks).forEach(function(k){if(k<cut) delete checks[k];});
+  Object.keys(settings.overrides).forEach(function(k){if(k<cut) delete settings.overrides[k];});
+})();
+
+var DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+var DOW_FULL=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var MON_FULL=["January","February","March","April","May","June","July","August","September","October","November","December"];
+var CAT={sleep:"Sleep",routine:"Routine",body:"Body",study:"Study",work:"Work",home:"Home",meal:"Meal",people:"People",mind:"Mind",commute:"Commute",plan:"Plan"};
+var VIEWS=["now","day","plan"];
+var state={view:"now",selected:null,lastKey:null,lastDay:null,lastSec:null,nowBlock:null,nowStop:null};
+var RMQ=window.matchMedia?window.matchMedia("(prefers-reduced-motion: reduce)"):null;
+function RM(){return !!(RMQ&&RMQ.matches);}
+
+function $(id){return document.getElementById(id);}
+function el(tag,cls,text){var e=document.createElement(tag);if(cls) e.className=cls;if(text!=null) e.textContent=text;return e;}
+function hhmm(d){return pad(d.getHours())+":"+pad(d.getMinutes());}
+function len(min){var h=Math.floor(min/60),m=min%60;return h?(m?h+"h"+pad(m):h+"h"):m+"m";}
+function countdown(ms){var s=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?h+":"+pad(m)+":"+pad(x):m+":"+pad(x);}
+function dayType(c){return c.weekday?(c.office?"Office day":"Home day"):DOW_FULL[c.dow];}
+function isChecked(day,id){var a=checks[day];return !!(a&&a.indexOf(id)>=0);}
+function setChecked(day,id,on){
+  var a=checks[day]||(checks[day]=[]),i=a.indexOf(id);
+  if(on&&i<0) a.push(id);
+  if(!on&&i>=0) a.splice(i,1);
+  if(!a.length) delete checks[day];
+  save(C_KEY,checks);
+}
+function blockDone(b){return b.items.length>0&&b.items.every(function(i){return isChecked(b.day,i.id);});}
+function dayDone(b){
+  var n=0,ok=true;
+  timeline(b.ctx.date,settings).forEach(function(x){x.items.forEach(function(i){n++;if(!isChecked(b.day,i.id)) ok=false;});});
+  return n>0&&ok;
+}
+
+/* Sound: everything is synthesized, no audio files. */
+var actx=null,master=null;
+function unlock(){
+  try{
+    if(!actx){
+      var AC=window.AudioContext||window.webkitAudioContext;
+      if(AC){actx=new AC();master=actx.createGain();master.gain.value=0.9;master.connect(actx.destination);}
+    }
+    if(actx&&actx.state==="suspended") actx.resume().then(renderTools,function(){});
+  }catch(e){}
+  renderTools();
+}
+function whenReady(fn){
+  if(!actx) return;
+  if(actx.state==="running"){fn();return;}
+  try{actx.resume().then(fn,function(){});}catch(e){}
+}
+function tone(f,at,dur,o){
+  o=o||{};
+  var t=actx.currentTime+at,osc=actx.createOscillator(),g=actx.createGain();
+  osc.type=o.type||"sine";
+  osc.frequency.setValueAtTime(f,t);
+  if(o.to) osc.frequency.exponentialRampToValueAtTime(o.to,t+dur*0.7);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(o.gain||0.15,t+(o.attack||0.006));
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  osc.connect(g);g.connect(master);
+  osc.start(t);osc.stop(t+dur+0.05);
+}
+function bell(f,at,dur,gain){tone(f,at,dur,{gain:gain});tone(f*2.01,at,dur*0.55,{gain:gain*0.3});tone(f*3.02,at,dur*0.3,{gain:gain*0.1,type:"triangle"});}
+var SFX={
+  tap:function(){tone(1700,0,0.035,{gain:0.05,type:"triangle"});},
+  toggle:function(){tone(560,0,0.05,{gain:0.06,type:"square"});tone(840,0.05,0.06,{gain:0.05,type:"square"});},
+  check:function(){tone(740,0,0.11,{gain:0.14,to:1480});tone(1480,0.05,0.12,{gain:0.06,type:"triangle"});},
+  uncheck:function(){tone(620,0,0.09,{gain:0.08,to:380});},
+  tick:function(){tone(1320,0,0.06,{gain:0.09,type:"triangle"});},
+  block:function(){bell(880,0,1.2,0.2);bell(698.46,0.34,1.6,0.19);},
+  done:function(){[1046.5,1318.51,1567.98,2093].forEach(function(f,i){bell(f,i*0.085,0.75,0.12);});},
+  day:function(){
+    [523.25,659.25,783.99,1046.5,1318.51,1567.98].forEach(function(f,i){bell(f,i*0.075,0.8,0.11);});
+    [1046.5,1318.51,1567.98].forEach(function(f){bell(f,0.55,1.8,0.11);});
+  }
+};
+var VIB={check:12,toggle:8,done:[30,40,30],day:[40,60,40,60,90],block:[150,90,150]};
+function sfx(name){
+  if(!settings.sound) return;
+  if(actx&&actx.state==="running"){try{SFX[name]();}catch(e){}}
+  if(VIB[name]){try{if(navigator.vibrate) navigator.vibrate(VIB[name]);}catch(e){}}
+}
+
+/* Keep the screen on while the page is open. */
+var lock=null,canWake=("wakeLock" in navigator);
+function requestWake(){
+  if(!canWake||!settings.awake||document.hidden||lock) return;
+  try{
+    navigator.wakeLock.request("screen").then(function(l){
+      lock=l;
+      l.addEventListener("release",function(){lock=null;renderTools();});
+      renderTools();
+    },function(){lock=null;renderTools();});
+  }catch(e){}
+}
+function releaseWake(){if(lock){try{lock.release();}catch(e){}lock=null;}}
+
+/* Motion */
+function center(node){var r=node.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};}
+function burst(x,y,colors,n,opt){
+  if(RM()) return;
+  opt=opt||{};
+  var power=opt.power||160,spread=opt.spread==null?360:opt.spread,grav=opt.gravity==null?140:opt.gravity,size=opt.size||7,base=opt.angle==null?-90:opt.angle;
+  for(var i=0;i<n;i++)(function(i){
+    var p=document.createElement("i");
+    if(!p.animate) return;
+    var w=size*(0.5+Math.random()*0.8),h=Math.random()<0.5?w:w*0.45;
+    p.className="bit";
+    p.style.left=x+"px";p.style.top=y+"px";p.style.width=w+"px";p.style.height=h+"px";
+    p.style.background=colors[i%colors.length];
+    p.style.borderRadius=Math.random()<0.4?"50%":"1px";
+    document.body.appendChild(p);
+    var ang=(base+(Math.random()-0.5)*spread)*Math.PI/180,v=power*(0.45+Math.random()*0.75);
+    var dx=Math.cos(ang)*v,dy=Math.sin(ang)*v,rot=(Math.random()-0.5)*900,dur=(opt.duration||1100)*(0.7+Math.random()*0.6);
+    var a=p.animate([
+      {transform:"translate(-50%,-50%) rotate(0deg)",opacity:1},
+      {transform:"translate(calc(-50% + "+(dx*0.85).toFixed(1)+"px),calc(-50% + "+(dy*0.85).toFixed(1)+"px)) rotate("+(rot*0.5).toFixed(0)+"deg)",opacity:1,offset:0.4},
+      {transform:"translate(calc(-50% + "+dx.toFixed(1)+"px),calc(-50% + "+(dy+grav).toFixed(1)+"px)) rotate("+rot.toFixed(0)+"deg)",opacity:0}
+    ],{duration:dur,easing:"cubic-bezier(.12,.75,.3,1)"});
+    a.onfinish=function(){p.remove();};
+  })(i);
+}
+function festive(cat){return ["var(--cat-"+cat+")","var(--cat-study)","var(--cat-home)","var(--cat-people)","var(--cat-body)","var(--ink)"];}
+function celebrate(b,origin,big){
+  var col=festive(b.cat);
+  burst(origin.x,origin.y,col,big?40:26,{power:big?260:190,spread:big?110:80,gravity:big?260:180,size:8,duration:big?1500:1150});
+  if(big){
+    var H=window.innerHeight,W=window.innerWidth;
+    setTimeout(function(){burst(0,H,col,36,{angle:-62,spread:30,power:H*0.85,gravity:H*0.35,size:9,duration:1700});},150);
+    setTimeout(function(){burst(W,H,col,36,{angle:-118,spread:30,power:H*0.85,gravity:H*0.35,size:9,duration:1700});},300);
+  }
+}
+function restart(node,cls){node.classList.remove(cls);void node.offsetWidth;node.classList.add(cls);}
+
+function setTitle(text,animate){
+  var h=$("nowTitle"),i=0;
+  h.textContent="";
+  h.setAttribute("aria-label",text);
+  if(!animate||RM()){h.textContent=text;return;}
+  text.split(" ").forEach(function(word,wi,arr){
+    var w=el("span","w");
+    w.setAttribute("aria-hidden","true");
+    Array.prototype.forEach.call(word,function(ch){var s=el("span","ch",ch);s.style.setProperty("--i",i++);w.append(s);});
+    h.append(w);
+    if(wi<arr.length-1) h.append(document.createTextNode(" "));
+  });
+}
+function updateStamp(pop){
+  var s=$("stamp"),b=state.nowBlock,done=!!(b&&blockDone(b));
+  s.hidden=!done;
+  if(done&&pop&&!RM()) restart(s,"pop");
+}
+
+function checklist(b,prefix){
+  var ul=el("ul","checks");
+  b.items.forEach(function(it){
+    var li=el("li"),lab=el("label"),cb=el("input"),txt=el("span","txt"),id=prefix+"-"+b.day+"-"+it.id.replace(/[^A-Za-z0-9]/g,"-");
+    cb.type="checkbox";cb.id=id;lab.htmlFor=id;
+    cb.setAttribute("data-day",b.day);cb.setAttribute("data-item",it.id);
+    cb.checked=isChecked(b.day,it.id);
+    cb.addEventListener("change",function(){
+      setChecked(b.day,it.id,cb.checked);
+      document.querySelectorAll('input[data-item="'+it.id+'"][data-day="'+b.day+'"]').forEach(function(o){o.checked=cb.checked;});
+      refreshCounts();
+      var isNowBlock=!!(state.nowBlock&&state.nowBlock.day===b.day&&state.nowBlock.key===b.key);
+      if(isNowBlock) updateStamp(cb.checked);
+      if(!cb.checked){sfx("uncheck");return;}
+      restart(cb,"just");
+      var c=center(cb);
+      burst(c.x,c.y,["var(--cat-"+b.cat+")"],8,{power:46,gravity:12,size:5,duration:520});
+      if(blockDone(b)){
+        var big=dayDone(b);
+        var origin=(isNowBlock&&state.view==="now")?center($("nowCard").querySelector(".sign")):c;
+        sfx(big?"day":"done");
+        celebrate(b,origin,big);
+      } else sfx("check");
+    });
+    txt.append(el("span","s",it.text));
+    lab.append(cb,txt);
+    if(it.tag) lab.append(el("span","tag",it.tag));
+    li.append(lab);ul.append(li);
+  });
+  return ul;
+}
+
+function renderToolbar(now){
+  var today=dayContext(now,settings),dt=$("dayType");
+  if(today.weekday){
+    dt.hidden=false;
+    $("dtHome").setAttribute("aria-pressed",String(!today.office));
+    $("dtOffice").setAttribute("aria-pressed",String(today.office));
+  } else dt.hidden=true;
+  renderTools();
+}
+function renderTools(){
+  var running=!!(actx&&actx.state==="running"),sb=$("sndBtn"),ab=$("awakeBtn"),st=$("soundTog"),at=$("awakeTog");
+  sb.setAttribute("aria-pressed",String(settings.sound));
+  sb.setAttribute("aria-label",settings.sound?(running?"Sound on":"Sound on, tap anywhere to start it"):"Sound off");
+  $("sndOn").hidden=!settings.sound;
+  $("sndOff").hidden=settings.sound;
+  $("sndWait").hidden=!(settings.sound&&!running);
+  ab.hidden=!canWake;
+  ab.setAttribute("aria-pressed",String(settings.awake));
+  ab.setAttribute("aria-label",settings.awake?"Screen stays on":"Screen can sleep");
+  st.setAttribute("aria-pressed",String(settings.sound));st.textContent=settings.sound?"On":"Off";
+  at.setAttribute("aria-pressed",String(settings.awake));at.textContent=settings.awake?"On":"Off";
+  $("awakeRow").hidden=!canWake;
+}
+
+function renderNow(now,r,animate){
+  var b=r.block,n=r.next,box=$("nowChecks"),card=$("nowCard");
+  state.nowBlock=b;
+  card.style.setProperty("--c","var(--cat-"+b.cat+")");
+  $("nowCat").textContent=CAT[b.cat];
+  setTitle(b.title,animate);
+  $("nowDetail").textContent=b.detail;
+  $("nowRange").textContent=hhmm(b.startAt)+"–"+hhmm(b.endAt);
+  box.textContent="";
+  if(b.items.length){box.append(checklist(b,"n"));box.hidden=false;} else box.hidden=true;
+  updateStamp(false);
+  $("nextRow").style.setProperty("--c","var(--cat-"+n.cat+")");
+  $("nextTime").textContent=hhmm(n.startAt);
+  $("nextTitle").textContent=n.title;
+  if(animate&&!RM()){
+    restart(card,"enter");
+    setTimeout(function(){card.classList.remove("enter");},1500);
+  }
+  tickNow(now,r);
+}
+function tickNow(now,r){
+  var b=r.block,total=b.endAt-b.startAt,left=b.endAt-now,p=Math.min(1,Math.max(0,1-left/total)),secs=Math.ceil(left/1000),lw=$("leftWrap");
+  $("nowLeft").textContent=countdown(left);
+  $("nowBar").style.width=(p*100).toFixed(2)+"%";
+  lw.classList.toggle("final",secs<=60);
+  if(state.lastSec!==null&&secs!==state.lastSec&&secs<=10&&secs>0&&!document.hidden){
+    if(!RM()) restart(lw,"beat");
+    if(secs<=3) sfx("tick");
+  }
+  state.lastSec=secs;
+  if(state.nowStop) state.nowStop.style.setProperty("--p",(p*100).toFixed(2)+"%");
+}
+
+function weekOf(d){
+  var s=startOfDay(d),mon=addDays(s,-((s.getDay()+6)%7)),out=[];
+  for(var i=0;i<7;i++) out.push(addDays(mon,i));
+  return out;
+}
+function renderDay(now,r){
+  var today=startOfDay(now),todayKey=ymd(today),sel=state.selected||today,selKey=ymd(sel),chips=$("dayChips"),rail=$("rail");
+  chips.textContent="";
+  weekOf(today).forEach(function(d){
+    var k=ymd(d),b=el("button","chip");
+    b.type="button";
+    b.setAttribute("aria-pressed",String(k===selKey));
+    b.setAttribute("aria-label",DOW_FULL[d.getDay()]+" "+d.getDate()+(k===todayKey?", today":""));
+    if(k===todayKey) b.classList.add("is-today");
+    b.append(el("span","cd",DOW[d.getDay()]),el("span","cn",String(d.getDate())));
+    b.addEventListener("click",function(){
+      var t=new Date();
+      state.selected=d;
+      sfx("tap");
+      renderDay(t,findNow(t,settings));
+      if(!RM()) restart(rail,"cascade");
+    });
+    chips.append(b);
+  });
+  var c=dayContext(sel,settings),tl=timeline(sel,settings);
+  $("dayTitle").textContent=DOW_FULL[c.dow]+" "+c.dom+" "+MON_FULL[c.month];
+  $("dayKind").textContent=dayType(c);
+  rail.textContent="";
+  state.nowStop=null;
+  tl.forEach(function(b,idx){
+    var li=el("li","stop"),isNow=!!(r&&r.block.day===b.day&&r.block.key===b.key);
+    li.style.setProperty("--c","var(--cat-"+b.cat+")");
+    li.style.setProperty("--i",idx);
+    if(isNow) li.classList.add("is-now"); else if(b.endAt<=now) li.classList.add("is-past");
+    var seg=el("span","seg"),body=el("div","body"),head=el("span","head");
+    seg.setAttribute("aria-hidden","true");
+    if(isNow){seg.append(el("span","here"));state.nowStop=li;}
+    head.append(el("span","ttl",b.title));
+    if(isNow) head.append(el("span","nowtag","Now"));
+    head.append(el("span","len",b.key==="sleep"?"until "+hhmm(b.endAt):len(b.minutes)));
+    if(b.items.length){
+      var cnt=el("span","cnt"),det=el("details"),sum=el("summary");
+      cnt.setAttribute("data-day",b.day);
+      cnt.setAttribute("data-ids",b.items.map(function(i){return i.id;}).join("|"));
+      head.append(cnt);
+      if(isNow) det.open=true;
+      sum.append(head);
+      det.append(sum,el("p","sub",b.detail),checklist(b,"d"));
+      body.append(det);
+    } else {
+      body.append(head);
+      if(b.detail) body.append(el("p","sub",b.detail));
+    }
+    li.append(el("span","t",hhmm(b.startAt)),seg,body);
+    rail.append(li);
+  });
+  refreshCounts();
+  if(r&&state.nowStop) tickNow(now,r);
+}
+function refreshCounts(){
+  var total=0,done=0;
+  document.querySelectorAll("#rail .cnt").forEach(function(s){
+    var ids=s.getAttribute("data-ids").split("|"),day=s.getAttribute("data-day");
+    var n=ids.filter(function(id){return isChecked(day,id);}).length;
+    s.textContent=n+"/"+ids.length;
+    s.classList.toggle("is-done",n===ids.length);
+    total+=ids.length;done+=n;
+  });
+  $("dayProgress").textContent=done+" of "+total+" checked";
+}
+
+function renderPlan(now){
+  var od=$("officeDays"),ml=$("monthList"),today=startOfDay(now);
+  od.textContent="";
+  [1,2,3,4,5].forEach(function(dw){
+    var b=el("button","dtog",DOW[dw]);
+    b.type="button";
+    b.setAttribute("aria-pressed",String(settings.officeDays.indexOf(dw)>=0));
+    b.addEventListener("click",function(){
+      var i=settings.officeDays.indexOf(dw);
+      if(i>=0) settings.officeDays.splice(i,1); else settings.officeDays.push(dw);
+      settings.officeDays.sort();
+      save(S_KEY,settings);
+      sfx("toggle");
+      renderAll(new Date(),false);
+    });
+    od.append(b);
+  });
+  $("officeHint").textContent=settings.officeDays.length
+    ?"On office days you leave at 09:00, study on the way and skip evening study. Change a single day on the Now tab."
+    :"None set yet, so every weekday runs as a home day. Tap the days you go to the office.";
+  $("monthName").textContent=MON_FULL[now.getMonth()]+" "+now.getFullYear();
+  ml.textContent="";
+  monthSpecials(now,settings).forEach(function(g){
+    var li=el("li"),when=el("div","md"),ul=el("ul");
+    if(g.date<today) li.classList.add("is-past");
+    when.append(el("small",null,DOW[g.date.getDay()]),document.createTextNode(g.date.getDate()+" "+MON[g.date.getMonth()]));
+    g.items.forEach(function(it){var x=el("li");x.append(el("span",null,it.text),el("span","tag",it.tag));ul.append(x);});
+    li.append(when,ul);
+    ml.append(li);
+  });
+  $("bookMonth").textContent=bookOfMonth(now);
+  renderTools();
+}
+
+function renderAll(now,animate){
+  now=now||new Date();
+  var r=findNow(now,settings);
+  $("clock").textContent=hhmm(now);
+  $("dateLabel").textContent=DOW_FULL[now.getDay()]+" "+now.getDate()+" "+MON_FULL[now.getMonth()];
+  renderToolbar(now);
+  if(r) renderNow(now,r,animate);
+  renderDay(now,r);
+  renderPlan(now);
+  state.lastKey=r?r.block.day+"/"+r.block.key:"";
+  state.lastDay=ymd(now);
+}
+
+function show(view,remember){
+  if(VIEWS.indexOf(view)<0) view="now";
+  var changed=state.view!==view,v=$("view-"+view),rail=$("rail");
+  state.view=view;
+  VIEWS.forEach(function(x){
+    $("view-"+x).hidden=x!==view;
+    if(x===view) $("tab-"+x).setAttribute("aria-current","page"); else $("tab-"+x).removeAttribute("aria-current");
+  });
+  if(remember){try{history.replaceState(null,"","#"+view);}catch(e){}}
+  window.scrollTo(0,0);
+  if(changed&&!RM()) restart(v,"in");
+  if(view==="day"){
+    if(changed&&!RM()){restart(rail,"cascade");setTimeout(function(){rail.classList.remove("cascade");},1400);}
+    setTimeout(function(){
+      var s=document.querySelector("#rail .stop.is-now");
+      if(s&&s.scrollIntoView) s.scrollIntoView({block:"center",behavior:RM()?"auto":"smooth"});
+    },changed?260:0);
+  }
+}
+
+function tick(){
+  var now=new Date(),r=findNow(now,settings),key=r?r.block.day+"/"+r.block.key:"",day=ymd(now);
+  if(day!==state.lastDay) state.selected=null;
+  if(key!==state.lastKey||day!==state.lastDay){
+    var changed=state.lastKey!==null&&key!==state.lastKey;
+    renderAll(now,changed);
+    if(changed) sfx("block");
+  } else {
+    $("clock").textContent=hhmm(now);
+    if(r) tickNow(now,r);
+  }
+}
+
+function setToday(kind){
+  settings.overrides[ymd(new Date())]=kind;
+  save(S_KEY,settings);
+  sfx("toggle");
+  renderAll(new Date(),true);
+}
+function toggleSound(){
+  settings.sound=!settings.sound;
+  save(S_KEY,settings);
+  unlock();
+  if(settings.sound) whenReady(function(){sfx("block");renderTools();});
+  renderTools();
+}
+function toggleAwake(){
+  settings.awake=!settings.awake;
+  save(S_KEY,settings);
+  if(settings.awake) requestWake(); else releaseWake();
+  sfx("toggle");
+  renderTools();
+}
+function selectLink(){
+  try{var r=document.createRange(),s=window.getSelection();r.selectNodeContents($("appLink"));s.removeAllRanges();s.addRange(r);}catch(e){}
+}
+
+VIEWS.forEach(function(v){$("tab-"+v).addEventListener("click",function(){if(state.view!==v) sfx("tap");show(v,true);});});
+$("dtHome").addEventListener("click",function(){setToday("home");});
+$("dtOffice").addEventListener("click",function(){setToday("office");});
+$("sndBtn").addEventListener("click",toggleSound);
+$("soundTog").addEventListener("click",toggleSound);
+$("awakeBtn").addEventListener("click",toggleAwake);
+$("awakeTog").addEventListener("click",toggleAwake);
+$("copyLink").addEventListener("click",function(){
+  var b=this;
+  function done(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy link";},1600);}
+  try{navigator.clipboard.writeText(APP_URL).then(done,selectLink);}catch(e){selectLink();}
+});
+document.addEventListener("pointerdown",function(){unlock();if(settings.awake&&!lock) requestWake();},{passive:true});
+document.addEventListener("keydown",unlock);
+document.addEventListener("visibilitychange",function(){if(!document.hidden){tick();requestWake();}});
+
+var deferredInstall=null;
+function isStandalone(){try{return window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;}catch(e){return false;}}
+function renderInstall(){var inst=isStandalone();$("installedNote").hidden=!inst;$("installHow").hidden=inst;$("installBtn").hidden=!deferredInstall;}
+window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredInstall=e;renderInstall();});
+window.addEventListener("appinstalled",function(){deferredInstall=null;renderInstall();});
+$("installBtn").addEventListener("click",function(){
+  if(!deferredInstall) return;
+  var d=deferredInstall;
+  deferredInstall=null;
+  try{d.prompt();d.userChoice.then(renderInstall,renderInstall);}catch(e){}
+  renderInstall();
+});
+$("appLink").textContent=APP_URL;
+renderInstall();
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
+
+save(S_KEY,settings);
+save(C_KEY,checks);
+renderAll(new Date(),false);
+show((location.hash||"").replace("#",""),false);
+requestWake();
+setInterval(tick,1000);
+})();
+</script>
+</body>
+</html>
