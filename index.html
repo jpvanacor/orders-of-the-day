@@ -366,7 +366,8 @@ function toMin(s){var p=s.split(":");return Number(p[0])*60+Number(p[1]);}
 function fmtMin(m){m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+":"+pad(m%60);}
 function daysInMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,0).getDate();}
 function bookOfMonth(d){return d.getMonth()%2===1?"philosophy":"fiction";}
-function deepJob(d){return ["Clean the windows","Clean the oven","Clean behind the furniture","Sort one closet"][d.getMonth()%4];}
+function deepJob(d){return ["Clean the windows","Clean the oven","Clean behind and under the furniture","Run the washing machine empty on hot and clean its filter"][d.getMonth()%4];}
+function quarterJob(d){return [["mattress","Rotate the mattress"],["brushes","Replace toothbrushes"],["wardrobe","Go through your clothes and donate what you didn't wear"]][d.getMonth()%3];}
 
 function isOfficeDay(date,settings){
   var dow=date.getDay();
@@ -381,10 +382,9 @@ function dayContext(date,settings){
   var d=startOfDay(date),dow=d.getDay(),dom=d.getDate(),month=d.getMonth(),dim=daysInMonth(d);
   return {date:d,key:ymd(d),dow:dow,dom:dom,month:month,
     weekday:dow>=1&&dow<=5,office:isOfficeDay(d,settings),
-    firstSat:dow===6&&dom<=7,lastSat:dow===6&&dom+7>dim,firstSun:dow===0&&dom<=7,
-    quarter:[0,3,6,9].indexOf(month)>=0,
+    nth:Math.ceil(dom/7),lastOfMonth:dom+7>dim,
     trainTomorrow:TRAIN_DAYS.indexOf((dow+1)%7)>=0,
-    book:bookOfMonth(d),deep:deepJob(d)};
+    book:bookOfMonth(d),deep:deepJob(d),qjob:quarterJob(d)};
 }
 
 function dayBlocks(c){
@@ -416,11 +416,12 @@ function dayBlocks(c){
     var wake=wakeBase.slice();
     if(wed) wake.push(["wash","Start the washing machine"]);
     add("wake","06:45","07:00","routine","Wake up","Feet on the floor. No snooze.",wake);
-    if(train) add("early","07:00","08:00","body","Train: "+train,"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+train]]);
-    else add("early","07:00","08:00","study","Study","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],["new","New material"]]);
-    var bf=[["shower","Shower"],["eat","Breakfast"],["dishes","Dishes right after"]];
-    if(wed) bf.push(["hang","Hang the laundry"]);
-    add("breakfast","08:00","08:30","routine","Shower and breakfast","Dishes right after.",bf);
+    add("breakfast","07:00","07:15","meal","Breakfast","Simple breakfast. Dishes right after.",[["eat","Breakfast"],["dishes","Dishes right after"]]);
+    if(train) add("early","07:15","08:15","body","Train: "+train,"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+train]]);
+    else add("early","07:15","08:15","study","Study","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],["new","New material"]]);
+    var sh=[["shower","Shower"]];
+    if(wed) sh.push(["hang","Hang the laundry"]);
+    add("shower","08:15","08:30","routine","Shower",wed?"Shower, then hang the laundry.":"Then straight to study.",sh);
     var reset=[["counters","Counters"],["trash","Trash out"],["zone",zone]];
     if(c.office){
       add("study","08:30","09:00","study","Study","Phone in the drawer. New material.",[["phone","Phone in the drawer"],["new","New material"]]);
@@ -460,20 +461,16 @@ function dayBlocks(c){
     add("train","11:00","12:00","body","Train: skills","Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Skills session"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and shower while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     var err=[["list","Buy everything on Friday's list"]];
-    if(c.firstSat){err.push(["restock","Restock cleaning and hygiene supplies","Monthly"]);err.push(["bills","Pay bills and check subscriptions","Monthly"]);}
-    if(c.lastSat) err.push(["haircut","Haircut","Monthly"]);
+    if(c.nth===1) err.push(["restock","Restock cleaning and hygiene supplies","Monthly"]);
+    if(c.nth===3) err.push(["haircut","Haircut","Monthly"]);
     add("errands","13:00","14:00","home","Groceries and errands","Everything on Friday's list.",err);
     var cl=[["linens","Bed linens and towels into the machine"],["mop","Mop the floors"],["shower","Deep-clean the shower"]];
-    if(c.firstSat) cl.push(["deep",c.deep,"Monthly"]);
-    if(c.firstSat&&c.quarter){
-      cl.push(["mattress","Rotate the mattress","Every 3 months"]);
-      cl.push(["brushes","Replace toothbrushes","Every 3 months"]);
-      cl.push(["wardrobe","Go through your clothes and donate what you didn't wear","Every 3 months"]);
-    }
+    if(c.nth===2) cl.push(["deep",c.deep,"Monthly"]);
+    if(c.nth===4) cl.push([c.qjob[0],c.qjob[1],"Every 3 months"]);
     add("cleaning","14:00","15:00","home","Weekly cleaning","Linens, floors, shower.",cl);
     add("reading","15:00","16:00","mind","Reading","Hang the laundry first. This month: "+c.book+".",[["hang","Hang the laundry"],["read","Read the book of the month"]]);
     add("study2","16:00","18:00","study","Study, 2 hours","Practice exam or questions.",[["phone","Phone in the drawer"],["exam","Practice exam or questions"],["mistakes","Note every mistake"]]);
-    tail("18:00","Time with people","No gaming, no series.",c.lastSat?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
+    tail("18:00","Time with people","No gaming, no series.",c.lastOfMonth?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
   } else {
     add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
     add("study","08:00","11:00","study","Study, 3 hours","Review the week.",[["phone","Phone in the drawer"],["mistakes","Go over the week's mistakes"],["anki","Anki reviews"],["summaries","Update your summaries"]]);
@@ -481,15 +478,15 @@ function dayBlocks(c){
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost, then wash up while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     add("rest","13:00","17:00","people","Time with people and rest","People, a book or outside. No gaming, no series.");
     var rs=[["cook","Cook for Mon–Wed"],["journal","Read this week's journal"],["money","Log the week's spending in Central"],["plan","Plan the week in TickTick"],["recycling","Take the recycling out"]];
-    if(c.firstSun){
+    if(c.nth===1){rs.push(["bills","Pay bills and check subscriptions","Monthly"]);rs.push(["mmoney","Monthly review: money","Monthly"]);}
+    if(c.nth===2){
       rs.push(["mstudy","Monthly review: study progress","Monthly"]);
-      rs.push(["mmoney","Monthly review: money","Monthly"]);
-      rs.push(["mevents","Check next month's birthdays and events","Monthly"]);
-      rs.push(["digital","Digital cleanup: downloads, photos, backup","Monthly"]);
       if(c.month===2){rs.push(["dentist","Book the dentist for this month","Yearly"]);rs.push(["checkup","Book a full checkup with blood work","Yearly"]);}
       if(c.month===8) rs.push(["dentist","Book the dentist for this month","Yearly"]);
       if(c.month===3) rs.push(["tax","File the income tax return this month","Yearly"]);
     }
+    if(c.nth===3) rs.push(["digital","Digital cleanup: downloads, photos, backup","Monthly"]);
+    if(c.lastOfMonth) rs.push(["mevents","Check next month's birthdays and events","Monthly"]);
     add("weekly","17:00","18:30","plan","Weekly reset","Cook, review, plan the week.",rs);
     add("call","18:30","19:00","people","Call someone","Someone you don't see often. At 18:50, put dinner in to defrost.",[["call","Call someone you don't see often"],["defrost","At 18:50, put dinner in to defrost"]]);
     tail("19:00","Dinner and time with people","Dishes right after. No screens.",[["dishes","Dishes right after"]]);
@@ -548,7 +545,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=3;
+var APP_VERSION=4;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
