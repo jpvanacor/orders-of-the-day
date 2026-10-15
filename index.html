@@ -29,12 +29,23 @@ img{max-width:100%}
 .hs-p{margin:.25rem 0 .85rem}
 #installBtn{margin-bottom:.9rem}
 .update{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.75rem;padding:.8rem 1rem;border-radius:6px;background:var(--ink);color:var(--bg);text-decoration:none;font-weight:700}
-.update .go{font:700 .75rem/1 var(--font-body);letter-spacing:.1em;text-transform:uppercase;border:1px solid currentColor;border-radius:3px;padding:.4rem .55rem;flex:none}
+.update .go,.urgentbar .go{font:700 .75rem/1 var(--font-body);letter-spacing:.1em;text-transform:uppercase;border:1px solid currentColor;border-radius:3px;padding:.4rem .55rem;flex:none}
+.urgentbar{appearance:none;width:100%;display:flex;align-items:center;gap:.65rem;margin-bottom:.75rem;padding:.8rem 1rem;border:0;border-radius:6px;background:var(--urgent);color:var(--on-cat);font:700 .95rem/1.25 var(--font-body);text-align:left;cursor:pointer}
+.urgentbar .go{margin-left:auto}
+.u-dot{width:.6rem;height:.6rem;border-radius:50%;background:currentColor;flex:none;animation:blink 1.4s ease-in-out infinite}
+.ends{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35rem;margin-top:.4rem}
+.endbtn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:4px;padding:.65rem .3rem;display:grid;justify-items:center;gap:.3rem;cursor:pointer;min-width:0}
+.endbtn b{font:600 .95rem/1 var(--font-mono)}
+.endbtn small{font:700 .64rem/1.2 var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center}
+.pick{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-top:.8rem;color:var(--muted);font-size:.92rem;flex-wrap:wrap}
+.pick input{font:500 .95rem/1 var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:.45rem .5rem;min-width:0}
+.ustatus{margin:0 0 .8rem;font-weight:700;max-width:62ch}
+#urgentSec h2 .sub-h.on{color:var(--urgent)}
 .btnrow{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem}
 a.switch{display:inline-block;text-decoration:none}
 /* Layout: one phone-width column. The current order is a colored sign that flips in like a departure board, the day is a line of colored stops, tabs are pinned to the bottom. */
 :root{
-  --bg:#E9EDF0; --surface:#F7F9FA; --ink:#101920; --muted:#56636E; --line:#CFD7DD; --soft:#DDE3E8; --on-cat:#FFFFFF;
+  --bg:#E9EDF0; --surface:#F7F9FA; --ink:#101920; --muted:#56636E; --line:#CFD7DD; --soft:#DDE3E8; --on-cat:#FFFFFF; --urgent:#B81D35;
   --cat-sleep:#3B4196; --cat-routine:#0B6F78; --cat-body:#23752F; --cat-study:#1E5BD0; --cat-work:#46515E; --cat-home:#8A5C0C;
   --cat-meal:#B2420F; --cat-people:#A82B74; --cat-mind:#6E42B8; --cat-commute:#4F6A84; --cat-plan:#566312;
   --font-display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;
@@ -43,14 +54,14 @@ a.switch{display:inline-block;text-decoration:none}
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0E1317; --surface:#161D23; --ink:#E6ECF0; --muted:#94A2AD; --line:#27323B; --soft:#202A32; --on-cat:#0E1317;
+    --bg:#0E1317; --surface:#161D23; --ink:#E6ECF0; --muted:#94A2AD; --line:#27323B; --soft:#202A32; --on-cat:#0E1317; --urgent:#FF8597;
     --cat-sleep:#A3A8F7; --cat-routine:#57CCD5; --cat-body:#6FD17B; --cat-study:#8AAEFF; --cat-work:#AEB8C4; --cat-home:#E8B357;
     --cat-meal:#FF9468; --cat-people:#F286C7; --cat-mind:#C0A4F7; --cat-commute:#A6C1DC; --cat-plan:#C6D56A;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0E1317; --surface:#161D23; --ink:#E6ECF0; --muted:#94A2AD; --line:#27323B; --soft:#202A32; --on-cat:#0E1317;
+  --bg:#0E1317; --surface:#161D23; --ink:#E6ECF0; --muted:#94A2AD; --line:#27323B; --soft:#202A32; --on-cat:#0E1317; --urgent:#FF8597;
   --cat-sleep:#A3A8F7; --cat-routine:#57CCD5; --cat-body:#6FD17B; --cat-study:#8AAEFF; --cat-work:#AEB8C4; --cat-home:#E8B357;
   --cat-meal:#FF9468; --cat-people:#F286C7; --cat-mind:#C0A4F7; --cat-commute:#A6C1DC; --cat-plan:#C6D56A;
   color-scheme:dark;
@@ -140,6 +151,7 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .chip.is-today .cn{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.25em}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
 .chip[aria-pressed="true"] .cd{color:var(--bg)}
+.chip.is-urgent{box-shadow:inset 0 -4px 0 var(--urgent)}
 .dayhead{margin-bottom:1rem}
 .dayhead h2{margin:0;font:800 1.6rem/1 var(--font-display);text-transform:uppercase;letter-spacing:.01em;text-wrap:balance}
 .dayhead p{margin:.35rem 0 0;color:var(--muted)}
@@ -210,8 +222,8 @@ details .checks{margin-top:.3rem}
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 .tabs button{appearance:none;border:0;background:transparent;padding:1rem .5rem .95rem;font:700 1.05rem/1 var(--font-display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);cursor:pointer;box-shadow:inset 0 3px 0 transparent}
 .tabs button[aria-current="page"]{color:var(--ink);box-shadow:inset 0 3px 0 var(--ink)}
-.chip,.dtog,.tabs button,.daytype button,.switch,.ibtn{transition:transform .12s ease,background-color .2s,color .2s,border-color .2s,box-shadow .2s}
-.chip:active,.dtog:active,.tabs button:active,.daytype button:active,.switch:active,.ibtn:active{transform:scale(.94)}
+.chip,.dtog,.endbtn,.tabs button,.daytype button,.switch,.ibtn{transition:transform .12s ease,background-color .2s,color .2s,border-color .2s,box-shadow .2s}
+.chip:active,.dtog:active,.endbtn:active,.tabs button:active,.daytype button:active,.switch:active,.ibtn:active{transform:scale(.94)}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -228,6 +240,7 @@ details .checks{margin-top:.3rem}
   <main>
     <section id="view-now" class="view" aria-label="Now">
       <a class="update" id="updateBar" hidden href="#"><span id="updateText">A new version is ready</span><span class="go">Download</span></a>
+      <button type="button" class="urgentbar" id="urgentBar" hidden><span class="u-dot" aria-hidden="true"></span><span id="urgentText">Urgent mode</span><span class="go">Change</span></button>
       <div class="toolbar">
         <div class="daytype" id="dayType" role="group" aria-label="Where you work today">
           <button type="button" id="dtHome" aria-pressed="true">Home day</button>
@@ -274,6 +287,20 @@ details .checks{margin-top:.3rem}
     </section>
 
     <section id="view-plan" class="view" aria-label="Plan" hidden>
+      <section class="sec" id="urgentSec">
+        <h2>Urgent mode <span class="sub-h" id="urgentState">Off</span></h2>
+        <p class="hint" style="margin-top:0">For periods when work comes first. Work takes the study blocks, an extra hour on home-day evenings and about 6 hours of each weekend day. Sleep, meals, a short daily workout and your evenings off stay.</p>
+        <div id="urgentOff">
+          <p class="hs-k" style="margin-top:.9rem">Turn on until</p>
+          <div class="ends" id="urgentEnds"></div>
+          <label class="pick" for="urgentPick">Or pick the last day <input type="date" id="urgentPick"></label>
+        </div>
+        <div id="urgentOn" hidden>
+          <p class="ustatus" id="urgentStatus"></p>
+          <div class="btnrow"><button type="button" class="switch" id="urgentEnd">End urgent mode</button></div>
+          <label class="pick" for="urgentMove">Change the last day <input type="date" id="urgentMove"></label>
+        </div>
+      </section>
       <section class="sec">
         <h2>Office days</h2>
         <div class="toggles" id="officeDays"></div>
@@ -378,12 +405,20 @@ function isOfficeDay(date,settings){
   return !!(settings&&Array.isArray(settings.officeDays)&&settings.officeDays.indexOf(dow)>=0);
 }
 
+function isUrgent(date,settings){
+  var u=settings&&settings.urgent;
+  if(!u||!u.from||!u.until) return false;
+  var k=ymd(date);
+  return k>=u.from&&k<=u.until;
+}
+
 function dayContext(date,settings){
   var d=startOfDay(date),dow=d.getDay(),dom=d.getDate(),month=d.getMonth(),dim=daysInMonth(d);
+  var nd=addDays(d,1),ndow=nd.getDay();
   return {date:d,key:ymd(d),dow:dow,dom:dom,month:month,
-    weekday:dow>=1&&dow<=5,office:isOfficeDay(d,settings),
+    weekday:dow>=1&&dow<=5,office:isOfficeDay(d,settings),urgent:isUrgent(d,settings),
     nth:Math.ceil(dom/7),lastOfMonth:dom+7>dim,
-    trainTomorrow:TRAIN_DAYS.indexOf((dow+1)%7)>=0,
+    trainTomorrow:TRAIN_DAYS.indexOf(ndow)>=0&&!(ndow>=1&&ndow<=5&&isUrgent(nd,settings)),
     book:bookOfMonth(d),deep:deepJob(d),qjob:quarterJob(d)};
 }
 
@@ -409,7 +444,46 @@ function dayBlocks(c){
   }
   var wakeBase=[["feet","Feet on the floor, no snooze"],["water","Drink water"],["bed","Make the bed"]];
 
-  if(c.weekday){
+  var hard=[["phone","Phone in the drawer"],["hard","Start with the task that matters most"]];
+  var basic=[["counters","Counters"],["trash","Trash out"]];
+  var defrostLunch=["defrost","11:50","12:00","meal","Defrost lunch","Put lunch in to defrost, then keep working until 12:00.",[["start","Put lunch in to defrost"]]];
+
+  if(c.weekday&&c.urgent){
+    var wedU=c.dow===3,wakeU=wakeBase.slice();
+    if(wedU) wakeU.push(["wash","Start the washing machine"]);
+    add("wake","06:45","07:00","routine","Wake up","Feet on the floor. No snooze.",wakeU);
+    add("breakfast","07:00","07:15","meal","Breakfast","Simple breakfast. Dishes right after.",[["eat","Breakfast"],["dishes","Dishes right after"]]);
+    var lunchU=[["lunch","Lunch away from the desk"],["dishes","Dishes right after"],["teeth","Brush your teeth"],["walk","5-minute walk (rain: stretch)"]];
+    if(c.office){
+      add("uwork1","07:15","08:30","work","Work: hardest task first","From home, before you leave.",hard);
+      var shU=[["shower","Shower"]];
+      if(wedU) shU.push(["hang","Hang the laundry"]);
+      add("shower","08:30","09:00","routine","Shower and get ready",wedU?"Shower, then hang the laundry.":"Leave at 09:00.",shU);
+      add("commute","09:00","10:00","commute","Commute","Read today's top 3, then rest your eyes.",[["top3","Read today's top 3"]]);
+      add("work1","10:00","11:50","work","Work","At the office.");
+      add.apply(null,defrostLunch);
+      add("lunch","12:00","12:45","meal","Lunch","Away from the desk. A 5-minute walk if it's dry.",lunchU);
+      add("work2","12:45","19:00","work","Work","At the office.");
+      add("commute2","19:00","20:00","commute","Commute home","Rest. No work on the way.",[["top3","Before leaving: write tomorrow's top 3"]]);
+      add("dinner","20:00","20:40","meal","Dinner","Defrost first, 10 minutes. Dishes right after.",[["defrost","Put dinner in to defrost"],["dishes","Dishes right after"]]);
+      add("reset","20:40","21:00","home","House reset","Only the basics in urgent mode.",basic);
+      tail("21:00","Rest","Time with people or a book. No work, no screens.");
+    } else {
+      add("uwork1","07:15","09:15","work","Work: hardest task first","Before messages and email.",hard);
+      var mv=[["circuit","15-minute bodyweight circuit"],["shower","Shower"]];
+      if(wedU) mv.push(["hang","Hang the laundry"]);
+      add("move","09:15","09:45","body","Workout and shower","15-minute bodyweight circuit at home, then shower.",mv);
+      add("work1","09:45","11:50","work","Work","From home.");
+      add.apply(null,defrostLunch);
+      add("lunch","12:00","12:45","meal","Lunch","Away from the desk. A 5-minute walk if it's dry.",lunchU);
+      add("work2","12:45","19:00","work","Work","From home.");
+      add("break","19:00","19:15","plan","Break","Dinner in to defrost. Note where you stopped.",[["defrost","Put dinner in to defrost"],["note","Note where you stopped"]]);
+      add("dinner","19:15","20:00","meal","Dinner","Dishes right after.",[["dishes","Dishes right after"]]);
+      add("reset","20:00","20:20","home","House reset","Only the basics in urgent mode.",basic);
+      add("uwork3","20:20","21:20","work","Work: last block","One task, then stop at 21:20.",[["one","Finish one task"],["top3","Write tomorrow's top 3"]]);
+      tail("21:20","Rest","Time with people or a book. No work, no screens.");
+    }
+  } else if(c.weekday){
     var train={1:"push day",3:"pull day",5:"legs and core"}[c.dow];
     var zone={1:"Quick bathroom clean: sink, toilet, mirror",2:"Sweep or vacuum every room",3:"Deep-clean the kitchen: stove, microwave, sink",4:"Fold and put away the laundry, tidy the bedroom",5:"Throw out anything old in the fridge and write the grocery list"}[c.dow];
     var wed=c.dow===3;
@@ -457,7 +531,8 @@ function dayBlocks(c){
     }
   } else if(c.dow===6){
     add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
-    add("study","08:00","11:00","study","Study, 3 hours","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],["work","Questions or new material"],["breaks","10-minute break each hour"]]);
+    if(c.urgent) add("uwork1","08:00","11:00","work","Work, 3 hours","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
+    else add("study","08:00","11:00","study","Study, 3 hours","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],["work","Questions or new material"],["breaks","10-minute break each hour"]]);
     add("train","11:00","12:00","body","Train: skills","Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Skills session"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and shower while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     var err=[["list","Buy everything on Friday's list"]];
@@ -467,16 +542,25 @@ function dayBlocks(c){
     var cl=[["linens","Bed linens and towels into the machine"],["mop","Mop the floors"],["shower","Deep-clean the shower"]];
     if(c.nth===2) cl.push(["deep",c.deep,"Monthly"]);
     if(c.nth===4) cl.push([c.qjob[0],c.qjob[1],"Every 3 months"]);
-    add("cleaning","14:00","15:00","home","Weekly cleaning","Linens, floors, shower.",cl);
-    add("reading","15:00","16:00","mind","Reading","Hang the laundry first. This month: "+c.book+".",[["hang","Hang the laundry"],["read","Read the book of the month"]]);
-    add("study2","16:00","18:00","study","Study, 2 hours","Practice exam or questions.",[["phone","Phone in the drawer"],["exam","Practice exam or questions"],["mistakes","Note every mistake"]]);
-    tail("18:00","Time with people","No gaming, no series.",c.lastOfMonth?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
+    if(c.urgent){
+      add("quick","14:00","14:30","home","Quick clean","Only what can't wait.",[["linens","Bed linens and towels into the machine"],["bath","Quick bathroom wipe"]]);
+      add("uwork2","14:30","18:00","work","Work","Hang the laundry at the first break. Stop at 18:00.",[["hang","Hang the laundry at the first break"],["breaks","10-minute break each hour"],["left","Write down what's left"]]);
+    } else {
+      add("cleaning","14:00","15:00","home","Weekly cleaning","Linens, floors, shower.",cl);
+      add("reading","15:00","16:00","mind","Reading","Hang the laundry first. This month: "+c.book+".",[["hang","Hang the laundry"],["read","Read the book of the month"]]);
+      add("study2","16:00","18:00","study","Study, 2 hours","Practice exam or questions.",[["phone","Phone in the drawer"],["exam","Practice exam or questions"],["mistakes","Note every mistake"]]);
+    }
+    tail("18:00","Time with people",c.urgent?"No work tonight.":"No gaming, no series.",c.lastOfMonth?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
   } else {
     add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
-    add("study","08:00","11:00","study","Study, 3 hours","Review the week.",[["phone","Phone in the drawer"],["mistakes","Go over the week's mistakes"],["anki","Anki reviews"],["summaries","Update your summaries"]]);
+    if(c.urgent) add("uwork1","08:00","11:00","work","Work, 3 hours","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
+    else add("study","08:00","11:00","study","Study, 3 hours","Review the week.",[["phone","Phone in the drawer"],["mistakes","Go over the week's mistakes"],["anki","Anki reviews"],["summaries","Update your summaries"]]);
     add("walk","11:00","12:00","body","Walk outside","One hour outdoors. If it rains, 30 minutes of stretching at home.");
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost, then wash up while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
-    add("rest","13:00","17:00","people","Time with people and rest","People, a book or outside. No gaming, no series.");
+    if(c.urgent){
+      add("uwork2","13:00","16:00","work","Work, 3 hours","Stop at 16:00.",[["breaks","10-minute break each hour"],["left","Write down what's left for Monday"]]);
+      add("rest","16:00","17:00","people","Rest","Away from work. People, a book or outside.");
+    } else add("rest","13:00","17:00","people","Time with people and rest","People, a book or outside. No gaming, no series.");
     var rs=[["cook","Cook for Mon–Wed"],["journal","Read this week's journal"],["money","Log the week's spending in Central"],["plan","Plan the week in TickTick"],["recycling","Take the recycling out"]];
     if(c.nth===1){rs.push(["bills","Pay bills and check subscriptions","Monthly"]);rs.push(["mmoney","Monthly review: money","Monthly"]);}
     if(c.nth===2){
@@ -545,7 +629,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=4;
+var APP_VERSION=5;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -561,6 +645,7 @@ var checks=load(C_KEY,null)||{};
   var cut=ymd(addDays(new Date(),-21));
   Object.keys(checks).forEach(function(k){if(k<cut) delete checks[k];});
   Object.keys(settings.overrides).forEach(function(k){if(k<cut) delete settings.overrides[k];});
+  if(settings.urgent&&(!settings.urgent.until||settings.urgent.until<ymd(new Date()))) delete settings.urgent;
 })();
 
 var DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -578,7 +663,7 @@ function el(tag,cls,text){var e=document.createElement(tag);if(cls) e.className=
 function hhmm(d){return pad(d.getHours())+":"+pad(d.getMinutes());}
 function len(min){var h=Math.floor(min/60),m=min%60;return h?(m?h+"h"+pad(m):h+"h"):m+"m";}
 function countdown(ms){var s=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?h+":"+pad(m)+":"+pad(x):m+":"+pad(x);}
-function dayType(c){return c.weekday?(c.office?"Office day":"Home day"):DOW_FULL[c.dow];}
+function dayType(c){return (c.weekday?(c.office?"Office day":"Home day"):DOW_FULL[c.dow])+(c.urgent?" · urgent mode":"");}
 function isChecked(day,id){var a=checks[day];return !!(a&&a.indexOf(id)>=0);}
 function setChecked(day,id,on){
   var a=checks[day]||(checks[day]=[]),i=a.indexOf(id);
@@ -817,6 +902,7 @@ function renderDay(now,r){
     b.setAttribute("aria-pressed",String(k===selKey));
     b.setAttribute("aria-label",DOW_FULL[d.getDay()]+" "+d.getDate()+(k===todayKey?", today":""));
     if(k===todayKey) b.classList.add("is-today");
+    if(isUrgent(d,settings)) b.classList.add("is-urgent");
     b.append(el("span","cd",DOW[d.getDay()]),el("span","cn",String(d.getDate())));
     b.addEventListener("click",function(){
       var t=new Date();
@@ -909,6 +995,54 @@ function renderPlan(now){
   renderTools();
 }
 
+function keyDate(k){var p=k.split("-");return new Date(+p[0],+p[1]-1,+p[2]);}
+function shortDay(d){return DOW[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()];}
+function longDay(d){return DOW_FULL[d.getDay()]+" "+d.getDate()+" "+MON_FULL[d.getMonth()];}
+function renderUrgent(now){
+  var today=ymd(now),u=settings.urgent,on=!!(u&&u.from<=today&&u.until>=today);
+  $("urgentState").textContent=on?"On":"Off";
+  $("urgentState").classList.toggle("on",on);
+  $("urgentOff").hidden=on;
+  $("urgentOn").hidden=!on;
+  $("urgentBar").hidden=!on;
+  if(on){
+    var last=keyDate(u.until),back=addDays(last,1);
+    $("urgentText").textContent="Urgent mode until "+shortDay(last);
+    $("urgentStatus").textContent="On until "+longDay(last)+". Your normal days come back on "+longDay(back)+".";
+    $("urgentMove").min=today;
+    $("urgentMove").value=u.until;
+  } else {
+    var t=startOfDay(now),sun=addDays(t,(7-t.getDay())%7),ends=$("urgentEnds");
+    ends.textContent="";
+    [[sun,"this week"],[addDays(sun,7),"next week"],[addDays(sun,14),"in 2 weeks"]].forEach(function(o){
+      var b=el("button","endbtn");
+      b.type="button";
+      b.append(el("b",null,shortDay(o[0])),el("small",null,o[1]));
+      b.addEventListener("click",function(){setUrgent(ymd(o[0]));});
+      ends.append(b);
+    });
+    $("urgentPick").min=today;
+    $("urgentPick").value="";
+  }
+}
+function setUrgent(until){
+  var today=ymd(new Date());
+  if(!until||until<today) return;
+  var from=(settings.urgent&&settings.urgent.from&&settings.urgent.from<=today&&settings.urgent.until>=today)?settings.urgent.from:today;
+  settings.urgent={from:from,until:until};
+  save(S_KEY,settings);
+  sfx("toggle");
+  renderAll(new Date(),true);
+  scheduleSoon(true);
+}
+function endUrgent(){
+  delete settings.urgent;
+  save(S_KEY,settings);
+  sfx("toggle");
+  renderAll(new Date(),true);
+  scheduleSoon(true);
+}
+
 function renderAll(now,animate){
   now=now||new Date();
   var r=findNow(now,settings);
@@ -918,6 +1052,7 @@ function renderAll(now,animate){
   if(r) renderNow(now,r,animate);
   renderDay(now,r);
   renderPlan(now);
+  renderUrgent(now);
   state.lastKey=r?r.block.day+"/"+r.block.key:"";
   state.lastDay=ymd(now);
 }
@@ -982,6 +1117,10 @@ function selectLink(){
 
 VIEWS.forEach(function(v){$("tab-"+v).addEventListener("click",function(){if(state.view!==v) sfx("tap");show(v,true);});});
 $("dtHome").addEventListener("click",function(){setToday("home");});
+$("urgentPick").addEventListener("change",function(){setUrgent(this.value);});
+$("urgentMove").addEventListener("change",function(){if(this.value) setUrgent(this.value);});
+$("urgentEnd").addEventListener("click",endUrgent);
+$("urgentBar").addEventListener("click",function(){sfx("tap");show("plan",true);});
 $("dtOffice").addEventListener("click",function(){setToday("office");});
 $("sndBtn").addEventListener("click",toggleSound);
 $("soundTog").addEventListener("click",toggleSound);
@@ -1013,7 +1152,7 @@ function notifPlan(now){
   out.sort(function(a,b){return a.at-b.at;});
   return out;
 }
-function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify]);}
+function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify,settings.urgent||null]);}
 function errText(e){return (e&&e.message)||String(e);}
 function ensureChannel(){
   if(!LN) return Promise.resolve();
