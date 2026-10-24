@@ -152,6 +152,21 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
 .chip[aria-pressed="true"] .cd{color:var(--bg)}
 .chip.is-urgent{box-shadow:inset 0 -4px 0 var(--urgent)}
+.chip.is-off{box-shadow:inset 0 -4px 0 var(--cat-people)}
+.chip.is-sick{box-shadow:inset 0 -4px 0 var(--cat-sleep)}
+.weeknav{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
+.weeknav span{font:700 .78rem/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.wkbtn{appearance:none;width:2.4rem;height:2.4rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:50%;font:600 1.2rem/1 var(--font-mono);cursor:pointer}
+.daymark{display:grid;grid-template-columns:repeat(3,1fr);margin:0 0 1rem}
+.daymark button:disabled{opacity:.4;cursor:default}
+.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35rem;margin:.5rem 0 .7rem}
+.tile{border:1px solid var(--line);border-radius:4px;padding:.65rem .55rem;display:grid;gap:.35rem;background:var(--surface);min-width:0}
+.tile b{font:600 1.2rem/1 var(--font-mono);font-variant-numeric:tabular-nums}
+.tile small{font:700 .72rem/1.25 var(--font-body);color:var(--muted)}
+.sc-k{margin:0;font:700 .72rem/1.4 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sc-skip{margin:0;font-weight:700;max-width:62ch}
+#nowScore{border-top:1px solid var(--line);padding:.9rem 1.1rem 1rem}
+#nowScore .hint{margin-top:.5rem}
 .dayhead{margin-bottom:1rem}
 .dayhead h2{margin:0;font:800 1.6rem/1 var(--font-display);text-transform:uppercase;letter-spacing:.01em;text-wrap:balance}
 .dayhead p{margin:.35rem 0 0;color:var(--muted)}
@@ -241,6 +256,7 @@ details .checks{margin-top:.3rem}
     <section id="view-now" class="view" aria-label="Now">
       <a class="update" id="updateBar" hidden href="#"><span id="updateText">A new version is ready</span><span class="go">Download</span></a>
       <button type="button" class="urgentbar" id="urgentBar" hidden><span class="u-dot" aria-hidden="true"></span><span id="urgentText">Urgent mode</span><span class="go">Change</span></button>
+      <button type="button" class="urgentbar" id="dayBar" hidden><span class="u-dot" aria-hidden="true"></span><span id="dayBarText">Day off</span><span class="go">Change</span></button>
       <div class="toolbar">
         <div class="daytype" id="dayType" role="group" aria-label="Where you work today">
           <button type="button" id="dtHome" aria-pressed="true">Home day</button>
@@ -272,16 +288,23 @@ details .checks{margin-top:.3rem}
           <div class="bar" aria-hidden="true"><span id="nowBar"></span></div>
         </div>
         <div id="nowChecks" hidden></div>
+        <div id="nowScore" hidden></div>
       </article>
       <p class="next" id="nextRow" style="--c:var(--cat-meal)"><span class="k">Next</span><span class="dot" aria-hidden="true"></span><time id="nextTime">12:00</time><b id="nextTitle">Lunch and a walk</b></p>
       <p class="rule"><b>Standing rule.</b> Missed a block? Drop it and do what this screen says now. Never try to catch up.</p>
     </section>
 
     <section id="view-day" class="view" aria-label="Day" hidden>
+      <div class="weeknav"><button type="button" class="wkbtn" id="wkPrev" aria-label="Previous week">&#8249;</button><span id="wkLabel">This week</span><button type="button" class="wkbtn" id="wkNext" aria-label="Next week">&#8250;</button></div>
       <div class="chips" id="dayChips"></div>
       <div class="dayhead">
         <h2 id="dayTitle">Thursday 8 October</h2>
         <p><span id="dayKind">Home day</span> · <span id="dayProgress"></span></p>
+      </div>
+      <div class="daytype daymark" id="dayMark" role="group" aria-label="Mark this day">
+        <button type="button" data-mark="normal" aria-pressed="true">Normal</button>
+        <button type="button" data-mark="off" aria-pressed="false">Day off</button>
+        <button type="button" data-mark="sick" aria-pressed="false">Sick</button>
       </div>
       <ol class="rail" id="rail"></ol>
     </section>
@@ -301,6 +324,10 @@ details .checks{margin-top:.3rem}
           <label class="pick" for="urgentMove">Change the last day <input type="date" id="urgentMove"></label>
         </div>
       </section>
+      <section class="sec" id="scoreSec">
+        <h2>This week <span class="sub-h" id="weekLetter">Week A</span></h2>
+        <div id="planScore"></div>
+      </section>
       <section class="sec">
         <h2>Office days</h2>
         <div class="toggles" id="officeDays"></div>
@@ -309,6 +336,7 @@ details .checks{margin-top:.3rem}
       <section class="sec" id="notifSec" hidden>
         <h2>Notifications</h2>
         <div class="switchrow"><span>A notification when each block starts, even with the app closed</span><button type="button" class="switch" id="notifTog" aria-pressed="true">On</button></div>
+        <div class="switchrow" style="margin-top:.9rem"><span>A quiet heads-up 5 minutes before each block</span><button type="button" class="switch" id="warnTog" aria-pressed="true">On</button></div>
         <p class="hint" id="notifStatus">Checking notifications.</p>
         <div class="btnrow"><button type="button" class="switch" id="notifAllow" hidden>Allow notifications</button><button type="button" class="switch" id="notifTest">Send a test</button></div>
       </section>
@@ -320,10 +348,14 @@ details .checks{margin-top:.3rem}
       <section class="sec">
         <h2>Every week</h2>
         <dl class="ref">
+          <dt>Study A</dt><dd>Mon Português · Tue Constitucional · Wed Civil · Thu Raciocínio Lógico · Fri Penal</dd>
+          <dt>Study B</dt><dd>Mon Português · Tue Institucional do MP · Wed Processo Civil · Thu Informática e LGPD · Fri Processo Penal</dd>
+          <dt>Weekend</dt><dd>Sat Legislação Especial + Administrativo, then a practice exam · Sun one redação</dd>
           <dt>Training</dt><dd>Mon push · Wed pull · Fri legs and core · Sat skills</dd>
           <dt>House reset</dt><dd>Mon bathroom · Tue floors · Wed kitchen and laundry · Thu fold laundry and bedroom · Fri fridge and grocery list</dd>
           <dt>Saturday</dt><dd>Groceries 13:00 · weekly cleaning 14:00</dd>
           <dt>Sunday</dt><dd>Weekly reset 17:00 · call someone 18:30</dd>
+          <dt>Holidays</dt><dd>National holidays and 20 September run as days off. Mark any other day in the Day tab.</dd>
           <dt>Yearly</dt><dd>Dentist in March and September · full checkup in March · income tax return in April</dd>
         </dl>
       </section>
@@ -385,6 +417,8 @@ details .checks{margin-top:.3rem}
 <script id="logic">
 "use strict";
 var TRAIN_DAYS=[1,3,5,6];
+var TRAIN_NAME={1:"push day",3:"pull day",5:"legs and core"};
+var ZONE={1:"Quick bathroom clean: sink, toilet, mirror",2:"Sweep or vacuum every room",3:"Deep-clean the kitchen: stove, microwave, sink",4:"Fold and put away the laundry, tidy the bedroom",5:"Throw out anything old in the fridge and write the grocery list"};
 function pad(n){return String(n).padStart(2,"0");}
 function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
 function startOfDay(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
@@ -392,9 +426,50 @@ function addDays(d,n){return new Date(d.getFullYear(),d.getMonth(),d.getDate()+n
 function toMin(s){var p=s.split(":");return Number(p[0])*60+Number(p[1]);}
 function fmtMin(m){m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+":"+pad(m%60);}
 function daysInMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,0).getDate();}
+function mod(a,n){return ((a%n)+n)%n;}
 function bookOfMonth(d){return d.getMonth()%2===1?"philosophy":"fiction";}
 function deepJob(d){return ["Clean the windows","Clean the oven","Clean behind and under the furniture","Run the washing machine empty on hot and clean its filter"][d.getMonth()%4];}
 function quarterJob(d){return [["mattress","Rotate the mattress"],["brushes","Replace toothbrushes"],["wardrobe","Go through your clothes and donate what you didn't wear"]][d.getMonth()%3];}
+
+/* Holidays: national ones plus Rio Grande do Sul. Any other day off is marked in the app. */
+var FIXED_HOLIDAYS={"01-01":"Confraternização Universal","04-21":"Tiradentes","05-01":"Dia do Trabalho","09-07":"Independência","09-20":"Revolução Farroupilha","10-12":"Nossa Senhora Aparecida","11-02":"Finados","11-15":"Proclamação da República","11-20":"Consciência Negra","12-25":"Natal"};
+function easter(y){
+  var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3);
+  var h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
+  var n=h+l-7*m+114;
+  return new Date(y,Math.floor(n/31)-1,(n%31)+1);
+}
+function holidayName(date){
+  var d=startOfDay(date),md=pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  if(FIXED_HOLIDAYS[md]) return FIXED_HOLIDAYS[md];
+  if(ymd(addDays(easter(d.getFullYear()),-2))===ymd(d)) return "Sexta-feira Santa";
+  return null;
+}
+
+/* Study rotation from the MP-RS Analista (Direito) plan: weeks alternate A and B. */
+var SUBJECTS={
+  pt:["Português","Gramática: sintaxe, concordância, regência, pontuação, crase"],
+  cons:["Direito Constitucional","Lei seca da CF/88"],
+  inst:["Institucional do MP","Lei 8.625/93, Lei Estadual 7.669/82 e resoluções do CNMP"],
+  civ:["Direito Civil","Lei seca: parte geral, prescrição, família, sucessões"],
+  pciv:["Processo Civil","Lei seca: tutela provisória, sentença, execução, recursos"],
+  rlm:["Raciocínio Lógico","Questões AOCP resolvidas passo a passo"],
+  inf:["Informática e LGPD","Office 365, OneDrive, SharePoint, LGPD, assinatura eletrônica"],
+  pen:["Direito Penal","Lei seca: parte geral e crimes contra a administração"],
+  ppen:["Processo Penal","Lei seca: investigação, ANPP, prisões, recursos"]
+};
+var WEEK_A={1:"pt",2:"cons",3:"civ",4:"rlm",5:"pen"},WEEK_B={1:"pt",2:"inst",3:"pciv",4:"inf",5:"ppen"};
+var SPECIAL_SETS=["ECA (Lei 8.069/90)","Maria da Penha (Lei 11.340/06)","Lei de Drogas (11.343/06)","LEP (Lei 7.210/84)","CDC (Lei 8.078/90)",
+  "Estatuto da Pessoa Idosa (10.741/03) e Abuso de Autoridade (13.869/19)","Crimes Hediondos (8.072/90) e Tortura (9.455/97)",
+  "Organização Criminosa (12.850/13) e Lavagem (9.613/98)","Crimes Ambientais (9.605/98) e Política do Meio Ambiente (6.938/81)",
+  "Código Florestal (12.651/12) e Resíduos Sólidos (12.305/10)","Recursos Hídricos (9.433/97) e Estatuto da Cidade (10.257/01)",
+  "Estatuto do Desarmamento (10.826/03) e Contravenções (DL 3.688/41)","Lei 8.137/90, Lei 7.716/89 e Prisão Temporária (7.960/89)",
+  "Crimes de trânsito (CTB) e Estatuto da Pessoa com Deficiência (13.146/15)"];
+var ADMIN_LAWS=["Lei 8.429/92 (improbidade)","Lei 14.133/21 (licitações e contratos)","Lei 9.784/99 (processo administrativo)"];
+var ROTATION_START=new Date(2026,9,26);
+function weekIndex(date){var s=startOfDay(date),mon=addDays(s,-mod(s.getDay()-1,7));return Math.round((mon-ROTATION_START)/6048e5);}
+function weekLetter(date){return mod(weekIndex(date),2)===0?"A":"B";}
+function subjectFor(date){var d=startOfDay(date),map=weekLetter(d)==="A"?WEEK_A:WEEK_B,k=map[d.getDay()];return k?SUBJECTS[k]:null;}
 
 function isOfficeDay(date,settings){
   var dow=date.getDay();
@@ -404,21 +479,32 @@ function isOfficeDay(date,settings){
   if(ov==="home") return false;
   return !!(settings&&Array.isArray(settings.officeDays)&&settings.officeDays.indexOf(dow)>=0);
 }
-
 function isUrgent(date,settings){
   var u=settings&&settings.urgent;
   if(!u||!u.from||!u.until) return false;
   var k=ymd(date);
   return k>=u.from&&k<=u.until;
 }
-
+function dayFlags(date,settings){
+  var d=startOfDay(date),dow=d.getDay(),key=ymd(d),weekday=dow>=1&&dow<=5;
+  var mark=settings&&settings.dayMarks?settings.dayMarks[key]:undefined,hol=holidayName(d);
+  return {d:d,dow:dow,key:key,weekday:weekday,holiday:hol,mark:mark||null,
+    off:weekday&&(mark==="off"||(!!hol&&mark!=="normal")),sick:mark==="sick",urgent:isUrgent(d,settings)};
+}
+function hasTraining(f){
+  if(f.sick||f.dow===0) return false;
+  if(f.dow===6) return true;
+  if(f.off) return TRAIN_DAYS.indexOf(f.dow)>=0;
+  return !f.urgent&&TRAIN_DAYS.indexOf(f.dow)>=0;
+}
 function dayContext(date,settings){
-  var d=startOfDay(date),dow=d.getDay(),dom=d.getDate(),month=d.getMonth(),dim=daysInMonth(d);
-  var nd=addDays(d,1),ndow=nd.getDay();
-  return {date:d,key:ymd(d),dow:dow,dom:dom,month:month,
-    weekday:dow>=1&&dow<=5,office:isOfficeDay(d,settings),urgent:isUrgent(d,settings),
+  var f=dayFlags(date,settings),d=f.d,dom=d.getDate(),dim=daysInMonth(d),t=dayFlags(addDays(d,1),settings);
+  var lateTomorrow=t.sick||t.off||t.dow===0||t.dow===6;
+  return {date:d,key:f.key,dow:f.dow,dom:dom,month:d.getMonth(),
+    weekday:f.weekday,office:isOfficeDay(d,settings),urgent:f.urgent,holiday:f.holiday,off:f.off,sick:f.sick,mark:f.mark,
     nth:Math.ceil(dom/7),lastOfMonth:dom+7>dim,
-    trainTomorrow:TRAIN_DAYS.indexOf(ndow)>=0&&!(ndow>=1&&ndow<=5&&isUrgent(nd,settings)),
+    trainTomorrow:hasTraining(t),lateTomorrow:lateTomorrow,nextWake:t.sick?"08:30":(lateTomorrow?"07:30":"06:45"),
+    subject:subjectFor(d),week:weekIndex(d),
     book:bookOfMonth(d),deep:deepJob(d),qjob:quarterJob(d)};
 }
 
@@ -428,9 +514,7 @@ function dayBlocks(c){
     B.push({key:key,start:toMin(start),end:toMin(end),cat:cat,title:title,detail:detail||"",
       items:(items||[]).map(function(x){return {id:key+"."+x[0],text:x[1],tag:x[2]||""};})});
   }
-  var late=c.dow===5||c.dow===6;
-  var w=late?["23:15","23:30","23:45"]:["22:15","22:30","22:45"];
-  var nextWake=late?"07:30":"06:45";
+  var w=c.lateTomorrow?["23:15","23:30","23:45"]:["22:15","22:30","22:45"];
   function tail(start,title,detail,items){
     add("people",start,w[0],"people",title,detail,items);
     add("wind",w[0],w[1],"routine","Wind down","Journal 3 lines. Screens off.",[
@@ -440,13 +524,55 @@ function dayBlocks(c){
       ["phone","Phone charging across the room"],
       ["screens","Screens off"]]);
     add("bed",w[1],w[2],"mind","Read in bed","Paper book until lights out. This month: "+c.book+".");
-    add("sleep",w[2],w[2],"sleep","Sleep","Lights out. Wake at "+nextWake+".");
+    add("sleep",w[2],w[2],"sleep","Sleep","Lights out. Wake at "+c.nextWake+".");
   }
   var wakeBase=[["feet","Feet on the floor, no snooze"],["water","Drink water"],["bed","Make the bed"]];
-
   var hard=[["phone","Phone in the drawer"],["hard","Start with the task that matters most"]];
   var basic=[["counters","Counters"],["trash","Trash out"]];
   var defrostLunch=["defrost","11:50","12:00","meal","Defrost lunch","Put lunch in to defrost, then keep working until 12:00.",[["start","Put lunch in to defrost"]]];
+  var S=c.subject;
+  var studyTitle=S?"Study: "+S[0]:"Study",qTitle=S?"Questions: "+S[0]:"Study: questions";
+  function studyItems(first,withQuestions){
+    var it=[["phone","Phone in the drawer"]];
+    if(first) it.push(["anki","Anki reviews"]);
+    it.push(["read",S?S[1]:"New material"]);
+    if(withQuestions) it.push(["q","AOCP questions on the same topic"]);
+    return it;
+  }
+  var evening=[["phone","Phone in the drawer"],["questions","AOCP questions, same subject as this morning"],["mistakes","Note every mistake"]];
+
+  /* Sick day: meals, rest and sleep only. */
+  if(c.sick){
+    add("breakfast","08:30","09:00","meal","Breakfast","Sleep in. Water and something light.",[["water","Drink water"],["eat","Something light to eat"]]);
+    add("rest1","09:00","12:00","sleep","Rest","Lie down with water within reach. No work, no study.");
+    add("lunch","12:00","13:00","meal","Lunch","Defrost first, 10 minutes.",[["defrost","Put lunch in to defrost"],["eat","Lunch"],["water","Drink water"]]);
+    add("rest2","13:00","19:00","sleep","Rest","Sleep if you can.");
+    add("dinner","19:00","20:00","meal","Dinner","Defrost first, 10 minutes.",[["defrost","Put dinner in to defrost"],["eat","Dinner"]]);
+    add("evening","20:00","21:30","mind","Quiet evening","Something light. Shower if you feel up to it.",[["teeth","Brush your teeth"],["phone","Phone charging across the room"]]);
+    add("sleep","21:30","21:30","sleep","Sleep","Early night. Wake at "+c.nextWake+".");
+    return B;
+  }
+
+  /* Weekday holiday or day off: a weekend morning, no work. */
+  if(c.weekday&&c.off){
+    var trainH=TRAIN_DAYS.indexOf(c.dow)>=0;
+    add("wake","07:30","08:00","routine","Wake up",c.holiday?"Holiday: "+c.holiday+". Feet on the floor, then breakfast.":"Day off. Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
+    if(c.urgent) add("uwork1","08:00","11:00","work","Work, 3 hours","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
+    else add("study","08:00","11:00","study",studyTitle,"Phone in the drawer. Anki first.",studyItems(true,true).concat([["breaks","10-minute break each hour"]]));
+    if(trainH) add("train","11:00","12:00","body","Train: "+TRAIN_NAME[c.dow],"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+TRAIN_NAME[c.dow]]]);
+    else add("walk","11:00","12:00","body","Walk outside","One hour outdoors. If it rains, 30 minutes of stretching at home.");
+    add("lunch","12:00","13:00","meal","Lunch",trainH?"Start the defrost and shower while it runs.":"Start the defrost, then wash up while it runs.",
+      (trainH?[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"]]:[["defrost","Put lunch in to defrost"]]).concat([["dishes","Dishes right after"],["teeth","Brush your teeth"]]));
+    if(c.urgent){
+      add("uwork2","13:00","16:00","work","Work, 3 hours","Stop at 16:00.",[["breaks","10-minute break each hour"],["left","Write down what's left"]]);
+      add("rest","16:00","18:00","people","Rest","Away from work. People, a book or outside.");
+    } else {
+      add("off","13:00","16:00","people",c.holiday?"Holiday: "+c.holiday:"Day off","No work. People, outside or rest.",[["zone","First, 10 minutes: "+ZONE[c.dow]]]);
+      add("study2","16:00","18:00","study",qTitle,"Phone in the drawer.",evening);
+    }
+    tail("18:00","Dinner and time with people","Defrost first. Dishes right after.",[["defrost","Put dinner in to defrost"],["dishes","Dishes right after"]]);
+    return B;
+  }
 
   if(c.weekday&&c.urgent){
     var wedU=c.dow===3,wakeU=wakeBase.slice();
@@ -484,24 +610,22 @@ function dayBlocks(c){
       tail("21:20","Rest","Time with people or a book. No work, no screens.");
     }
   } else if(c.weekday){
-    var train={1:"push day",3:"pull day",5:"legs and core"}[c.dow];
-    var zone={1:"Quick bathroom clean: sink, toilet, mirror",2:"Sweep or vacuum every room",3:"Deep-clean the kitchen: stove, microwave, sink",4:"Fold and put away the laundry, tidy the bedroom",5:"Throw out anything old in the fridge and write the grocery list"}[c.dow];
-    var wed=c.dow===3;
+    var train=TRAIN_NAME[c.dow],zone=ZONE[c.dow],wed=c.dow===3;
     var wake=wakeBase.slice();
     if(wed) wake.push(["wash","Start the washing machine"]);
     add("wake","06:45","07:00","routine","Wake up","Feet on the floor. No snooze.",wake);
     add("breakfast","07:00","07:15","meal","Breakfast","Simple breakfast. Dishes right after.",[["eat","Breakfast"],["dishes","Dishes right after"]]);
     if(train) add("early","07:15","08:15","body","Train: "+train,"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+train]]);
-    else add("early","07:15","08:15","study","Study","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],["new","New material"]]);
+    else add("early","07:15","08:15","study",studyTitle,"Phone in the drawer. Anki first.",studyItems(true,false));
     var sh=[["shower","Shower"]];
     if(wed) sh.push(["hang","Hang the laundry"]);
     add("shower","08:15","08:30","routine","Shower",wed?"Shower, then hang the laundry.":"Then straight to study.",sh);
     var reset=[["counters","Counters"],["trash","Trash out"],["zone",zone]];
     if(c.office){
-      add("study","08:30","09:00","study","Study","Phone in the drawer. New material.",[["phone","Phone in the drawer"],["new","New material"]]);
+      add("study","08:30","09:00","study",studyTitle,"Phone in the drawer.",studyItems(false,false));
       add("commute","09:00","10:00","commute","Commute","Anki or an audio class on the way.",[["anki","Anki or an audio class"]]);
       add("work1","10:00","11:50","work","Work","At the office.");
-      add("defrost","11:50","12:00","meal","Defrost lunch","Put lunch in to defrost, then keep working until 12:00.",[["start","Put lunch in to defrost"]]);
+      add.apply(null,defrostLunch);
       add("lunch","12:00","13:00","meal","Lunch and a walk","Away from the desk, then a 10-minute walk. If it rains, move around indoors.",[["lunch","Lunch away from the desk"],["teeth","Brush your teeth"],["walk","10-minute walk (rain: move around indoors)"]]);
       add("work2","13:00","19:00","work","Work","At the office.");
       var back=[["top3","Before leaving: write tomorrow's top 3"],["anki","Anki or an audio class"]];
@@ -512,10 +636,9 @@ function dayBlocks(c){
       if(c.dow===5) tail("21:00","Time with people","Go out or stay in with people.");
       else tail("21:00","Time with people","Or a book. No screens.");
     } else {
-      add("study","08:30","10:00","study","Study",train?"Phone in the drawer. Anki first, then new material.":"Phone in the drawer. Keep going with new material.",
-        train?[["phone","Phone in the drawer"],["anki","Anki reviews"],["new","New material"]]:[["phone","Phone in the drawer"],["new","New material"]]);
+      add("study","08:30","10:00","study",studyTitle,train?"Phone in the drawer. Anki first.":"Phone in the drawer. Same subject, keep going.",studyItems(!!train,true));
       add("work1","10:00","11:50","work","Work","From home.");
-      add("defrost","11:50","12:00","meal","Defrost lunch","Put lunch in to defrost, then keep working until 12:00.",[["start","Put lunch in to defrost"]]);
+      add.apply(null,defrostLunch);
       var lunch=[["lunch","Lunch away from the desk"],["dishes","Dishes right after"],["teeth","Brush your teeth"],["walk","10-minute walk (rain: move around indoors)"]];
       if(wed) lunch.push(["topup","On the walk: buy fruit, bread and milk"]);
       add("lunch","12:00","13:00","meal","Lunch and a walk","Away from the desk, then a 10-minute walk. If it rains, move around indoors.",lunch);
@@ -525,14 +648,15 @@ function dayBlocks(c){
       add("reset","20:00","20:20","home","House reset",zone+".",reset);
       if(c.dow===5) tail("20:20","Time with people","Go out or stay in with people.");
       else {
-        add("study2","20:20","21:20","study","Study: questions","Phone in the drawer. One block of questions.",[["phone","Phone in the drawer"],["questions","One block of questions"],["mistakes","Note every mistake"]]);
+        add("study2","20:20","21:20","study",qTitle,"Phone in the drawer. Same subject as this morning.",evening);
         tail("21:20","Time with people","Or a book. No screens.");
       }
     }
   } else if(c.dow===6){
     add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
     if(c.urgent) add("uwork1","08:00","11:00","work","Work, 3 hours","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study","08:00","11:00","study","Study, 3 hours","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],["work","Questions or new material"],["breaks","10-minute break each hour"]]);
+    else add("study","08:00","11:00","study","Study: Legislação Especial + Administrativo","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],
+      ["esp","Legislação Especial: "+SPECIAL_SETS[mod(c.week,SPECIAL_SETS.length)]],["adm","Administrativo: "+ADMIN_LAWS[mod(c.week,ADMIN_LAWS.length)]],["breaks","10-minute break each hour"]]);
     add("train","11:00","12:00","body","Train: skills","Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Skills session"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and shower while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     var err=[["list","Buy everything on Friday's list"]];
@@ -548,20 +672,20 @@ function dayBlocks(c){
     } else {
       add("cleaning","14:00","15:00","home","Weekly cleaning","Linens, floors, shower.",cl);
       add("reading","15:00","16:00","mind","Reading","Hang the laundry first. This month: "+c.book+".",[["hang","Hang the laundry"],["read","Read the book of the month"]]);
-      add("study2","16:00","18:00","study","Study, 2 hours","Practice exam or questions.",[["phone","Phone in the drawer"],["exam","Practice exam or questions"],["mistakes","Note every mistake"]]);
+      add("study2","16:00","18:00","study","Practice exam","25 to 30 mixed AOCP questions, timed.",[["phone","Phone in the drawer"],["exam","25 to 30 mixed AOCP questions, timed"],["mistakes","Note every mistake"]]);
     }
     tail("18:00","Time with people",c.urgent?"No work tonight.":"No gaming, no series.",c.lastOfMonth?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
   } else {
     add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
     if(c.urgent) add("uwork1","08:00","11:00","work","Work, 3 hours","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study","08:00","11:00","study","Study, 3 hours","Review the week.",[["phone","Phone in the drawer"],["mistakes","Go over the week's mistakes"],["anki","Anki reviews"],["summaries","Update your summaries"]]);
+    else add("study","08:00","11:00","study","Redação","One essay, nothing else.",[["theme","Pick a theme and plan it"],["write","Write the essay"],["fix","Correct it with the grid"],["rewrite","Rewrite the weakest paragraph"]]);
     add("walk","11:00","12:00","body","Walk outside","One hour outdoors. If it rains, 30 minutes of stretching at home.");
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost, then wash up while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     if(c.urgent){
       add("uwork2","13:00","16:00","work","Work, 3 hours","Stop at 16:00.",[["breaks","10-minute break each hour"],["left","Write down what's left for Monday"]]);
       add("rest","16:00","17:00","people","Rest","Away from work. People, a book or outside.");
     } else add("rest","13:00","17:00","people","Time with people and rest","People, a book or outside. No gaming, no series.");
-    var rs=[["cook","Cook for Mon–Wed"],["journal","Read this week's journal"],["money","Log the week's spending in Central"],["plan","Plan the week in TickTick"],["recycling","Take the recycling out"]];
+    var rs=[["cook","Cook for Mon–Wed"],["journal","Read this week's journal"],["score","Read the week score"],["money","Log the week's spending in Central"],["plan","Plan the week in TickTick"],["recycling","Take the recycling out"]];
     if(c.nth===1){rs.push(["bills","Pay bills and check subscriptions","Monthly"]);rs.push(["mmoney","Monthly review: money","Monthly"]);}
     if(c.nth===2){
       rs.push(["mstudy","Monthly review: study progress","Monthly"]);
@@ -612,13 +736,37 @@ function findNow(now,settings){
 function monthSpecials(date,settings){
   var y=date.getFullYear(),m=date.getMonth(),dim=daysInMonth(date),out=[];
   for(var d=1;d<=dim;d++){
-    var dt=new Date(y,m,d),items=[];
-    dayBlocks(dayContext(dt,settings)).forEach(function(b){
+    var dt=new Date(y,m,d),c=dayContext(dt,settings),items=[];
+    if(c.sick) items.push({text:"Sick day",tag:"Sick",block:"",time:""});
+    else if(c.holiday&&c.mark!=="normal") items.push({text:"Holiday: "+c.holiday,tag:"Holiday",block:"",time:""});
+    else if(c.off) items.push({text:"Day off",tag:"Day off",block:"",time:""});
+    dayBlocks(c).forEach(function(b){
       b.items.forEach(function(it){if(it.tag) items.push({text:it.text,tag:it.tag,block:b.title,time:fmtMin(b.start)});});
     });
     if(items.length) out.push({date:dt,key:ymd(dt),items:items});
   }
   return out;
+}
+
+/* What got done this week, Monday to now. A block counts when every item on it is checked. */
+function weekScore(now,settings,checks){
+  var today=startOfDay(now),mon=addDays(today,-mod(today.getDay()-1,7));
+  var train={plan:0,done:0},study={plan:0,done:0},items={all:0,done:0},skipped={};
+  for(var d=mon;d<=today;d=addDays(d,1)){
+    var got=(checks&&checks[ymd(d)])||[];
+    timeline(d,settings).forEach(function(b){
+      if(!b.items.length) return;
+      var n=b.items.filter(function(i){return got.indexOf(i.id)>=0;}).length,ended=b.endAt<=now,full=n===b.items.length;
+      if(!ended&&!full) return;
+      items.all+=b.items.length;items.done+=n;
+      var t=b.items.filter(function(i){return /\.(session|circuit)$/.test(i.id);})[0];
+      if(t){train.plan++;if(got.indexOf(t.id)>=0) train.done++;}
+      if(b.cat==="study"){study.plan+=b.minutes;if(full) study.done+=b.minutes;}
+      if(ended&&n===0){var name=b.title.split(":")[0];skipped[name]=(skipped[name]||0)+1;}
+    });
+  }
+  var top=Object.keys(skipped).map(function(k){return [k,skipped[k]];}).sort(function(a,b){return b[1]-a[1]||(a[0]<b[0]?-1:1);}).slice(0,3);
+  return {from:mon,to:today,train:train,study:study,items:items,skipped:top};
 }
 </script>
 
@@ -629,7 +777,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=5;
+var APP_VERSION=6;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -640,12 +788,15 @@ if(!settings.overrides||typeof settings.overrides!=="object") settings.overrides
 if(typeof settings.sound!=="boolean") settings.sound=true;
 if(typeof settings.awake!=="boolean") settings.awake=false;
 if(typeof settings.notify!=="boolean") settings.notify=true;
+if(typeof settings.warn!=="boolean") settings.warn=true;
+if(!settings.dayMarks||typeof settings.dayMarks!=="object") settings.dayMarks={};
 var checks=load(C_KEY,null)||{};
 (function prune(){
   var cut=ymd(addDays(new Date(),-21));
   Object.keys(checks).forEach(function(k){if(k<cut) delete checks[k];});
   Object.keys(settings.overrides).forEach(function(k){if(k<cut) delete settings.overrides[k];});
   if(settings.urgent&&(!settings.urgent.until||settings.urgent.until<ymd(new Date()))) delete settings.urgent;
+  Object.keys(settings.dayMarks).forEach(function(k){if(k<cut) delete settings.dayMarks[k];});
 })();
 
 var DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -654,7 +805,7 @@ var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"
 var MON_FULL=["January","February","March","April","May","June","July","August","September","October","November","December"];
 var CAT={sleep:"Sleep",routine:"Routine",body:"Body",study:"Study",work:"Work",home:"Home",meal:"Meal",people:"People",mind:"Mind",commute:"Commute",plan:"Plan"};
 var VIEWS=["now","day","plan"];
-var state={view:"now",selected:null,lastKey:null,lastDay:null,lastSec:null,nowBlock:null,nowStop:null};
+var state={view:"now",selected:null,weekOffset:0,lastKey:null,lastDay:null,lastSec:null,nowBlock:null,nowStop:null};
 var RMQ=window.matchMedia?window.matchMedia("(prefers-reduced-motion: reduce)"):null;
 function RM(){return !!(RMQ&&RMQ.matches);}
 
@@ -663,7 +814,11 @@ function el(tag,cls,text){var e=document.createElement(tag);if(cls) e.className=
 function hhmm(d){return pad(d.getHours())+":"+pad(d.getMinutes());}
 function len(min){var h=Math.floor(min/60),m=min%60;return h?(m?h+"h"+pad(m):h+"h"):m+"m";}
 function countdown(ms){var s=Math.max(0,Math.ceil(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?h+":"+pad(m)+":"+pad(x):m+":"+pad(x);}
-function dayType(c){return (c.weekday?(c.office?"Office day":"Home day"):DOW_FULL[c.dow])+(c.urgent?" · urgent mode":"");}
+function dayType(c){
+  if(c.sick) return "Sick day";
+  if(c.weekday&&c.off) return c.holiday?"Holiday: "+c.holiday:"Day off";
+  return (c.weekday?(c.office?"Office day":"Home day"):DOW_FULL[c.dow])+(c.holiday?" · "+c.holiday:"")+(c.urgent?" · urgent mode":"");
+}
 function isChecked(day,id){var a=checks[day];return !!(a&&a.indexOf(id)>=0);}
 function setChecked(day,id,on){
   var a=checks[day]||(checks[day]=[]),i=a.indexOf(id);
@@ -833,7 +988,7 @@ function checklist(b,prefix){
 
 function renderToolbar(now){
   var today=dayContext(now,settings),dt=$("dayType");
-  if(today.weekday){
+  if(today.weekday&&!today.off&&!today.sick){
     dt.hidden=false;
     $("dtHome").setAttribute("aria-pressed",String(!today.office));
     $("dtOffice").setAttribute("aria-pressed",String(today.office));
@@ -865,6 +1020,8 @@ function renderNow(now,r,animate){
   $("nowRange").textContent=hhmm(b.startAt)+"–"+hhmm(b.endAt);
   box.textContent="";
   if(b.items.length){box.append(checklist(b,"n"));box.hidden=false;} else box.hidden=true;
+  var sc=$("nowScore");
+  if(b.key==="weekly"){renderScore(sc,now);sc.hidden=false;} else {sc.hidden=true;sc.textContent="";}
   updateStamp(false);
   $("nextRow").style.setProperty("--c","var(--cat-"+n.cat+")");
   $("nextTime").textContent=hhmm(n.startAt);
@@ -894,15 +1051,25 @@ function weekOf(d){
   return out;
 }
 function renderDay(now,r){
-  var today=startOfDay(now),todayKey=ymd(today),sel=state.selected||today,selKey=ymd(sel),chips=$("dayChips"),rail=$("rail");
+  var today=startOfDay(now),todayKey=ymd(today),base=addDays(today,7*state.weekOffset),week=weekOf(base),chips=$("dayChips"),rail=$("rail");
+  var sel=state.selected||today;
+  if(ymd(sel)<ymd(week[0])||ymd(sel)>ymd(week[6])) sel=state.weekOffset===0?today:week[0];
+  state.selected=sel;
+  var selKey=ymd(sel);
+  $("wkLabel").textContent=state.weekOffset===0?"This week":state.weekOffset===1?"Next week":state.weekOffset===-1?"Last week":"Week of "+shortDay(week[0]);
+  $("wkPrev").disabled=state.weekOffset<=-1;
+  $("wkNext").disabled=state.weekOffset>=12;
   chips.textContent="";
-  weekOf(today).forEach(function(d){
+  week.forEach(function(d){
     var k=ymd(d),b=el("button","chip");
     b.type="button";
     b.setAttribute("aria-pressed",String(k===selKey));
     b.setAttribute("aria-label",DOW_FULL[d.getDay()]+" "+d.getDate()+(k===todayKey?", today":""));
     if(k===todayKey) b.classList.add("is-today");
-    if(isUrgent(d,settings)) b.classList.add("is-urgent");
+    var f=dayFlags(d,settings);
+    if(f.urgent) b.classList.add("is-urgent");
+    if(f.weekday&&f.off) b.classList.add("is-off");
+    if(f.sick) b.classList.add("is-sick");
     b.append(el("span","cd",DOW[d.getDay()]),el("span","cn",String(d.getDate())));
     b.addEventListener("click",function(){
       var t=new Date();
@@ -916,6 +1083,13 @@ function renderDay(now,r){
   var c=dayContext(sel,settings),tl=timeline(sel,settings);
   $("dayTitle").textContent=DOW_FULL[c.dow]+" "+c.dom+" "+MON_FULL[c.month];
   $("dayKind").textContent=dayType(c);
+  var cur=c.sick?"sick":(c.weekday&&c.off)?"off":"normal";
+  document.querySelectorAll("#dayMark button").forEach(function(btn){
+    var m=btn.getAttribute("data-mark");
+    btn.setAttribute("aria-pressed",String(m===cur));
+    btn.disabled=m==="off"&&!c.weekday;
+    btn.title=btn.disabled?"Weekends are already off":"";
+  });
   rail.textContent="";
   state.nowStop=null;
   tl.forEach(function(b,idx){
@@ -992,6 +1166,8 @@ function renderPlan(now){
     ml.append(li);
   });
   $("bookMonth").textContent=bookOfMonth(now);
+  $("weekLetter").textContent="Study week "+weekLetter(now);
+  renderScore($("planScore"),now);
   renderTools();
 }
 
@@ -1025,6 +1201,34 @@ function renderUrgent(now){
     $("urgentPick").value="";
   }
 }
+function fmtH(min){var h=Math.floor(min/60),m=min%60;return h+"h"+(m?pad(m):"");}
+function renderScore(box,now){
+  var s=weekScore(now,settings,checks),grid=el("div","score");
+  box.textContent="";
+  [[String(s.train.done),"of "+s.train.plan+" training sessions"],[fmtH(s.study.done),"of "+fmtH(s.study.plan)+" study"],[(s.items.all?Math.round(100*s.items.done/s.items.all):0)+"%","of the checklist"]].forEach(function(x){
+    var t=el("div","tile");t.append(el("b",null,x[0]),el("small",null,x[1]));grid.append(t);
+  });
+  box.append(el("p","sc-k","Since "+shortDay(s.from)),grid,
+    el("p","sc-skip",s.skipped.length?"Most skipped: "+s.skipped.map(function(x){return x[0]+" ×"+x[1];}).join(" · "):"Nothing skipped so far."),
+    el("p","hint","A block counts as done when every item on it is checked."));
+}
+function renderDayBar(now){
+  var c=dayContext(now,settings),bar=$("dayBar"),txt=null,col=null;
+  if(c.sick){txt="Sick day: meals, rest and sleep";col="var(--cat-sleep)";}
+  else if(c.weekday&&c.off){txt=c.holiday?"Holiday: "+c.holiday:"Day off";col="var(--cat-people)";}
+  bar.hidden=!txt;
+  if(txt){$("dayBarText").textContent=txt;bar.style.background=col;}
+}
+function setMark(d,val){
+  var k=ymd(d),hol=holidayName(d);
+  if(val==="normal"){if(hol) settings.dayMarks[k]="normal"; else delete settings.dayMarks[k];}
+  else if(val==="off"){if(hol) delete settings.dayMarks[k]; else settings.dayMarks[k]="off";}
+  else settings.dayMarks[k]="sick";
+  save(S_KEY,settings);
+  sfx("toggle");
+  renderAll(new Date(),k===ymd(new Date()));
+  scheduleSoon(true);
+}
 function setUrgent(until){
   var today=ymd(new Date());
   if(!until||until<today) return;
@@ -1053,6 +1257,7 @@ function renderAll(now,animate){
   renderDay(now,r);
   renderPlan(now);
   renderUrgent(now);
+  renderDayBar(now);
   state.lastKey=r?r.block.day+"/"+r.block.key:"";
   state.lastDay=ymd(now);
 }
@@ -1121,6 +1326,10 @@ $("urgentPick").addEventListener("change",function(){setUrgent(this.value);});
 $("urgentMove").addEventListener("change",function(){if(this.value) setUrgent(this.value);});
 $("urgentEnd").addEventListener("click",endUrgent);
 $("urgentBar").addEventListener("click",function(){sfx("tap");show("plan",true);});
+$("dayBar").addEventListener("click",function(){sfx("tap");state.weekOffset=0;state.selected=null;renderDay(new Date(),findNow(new Date(),settings));show("day",true);});
+$("wkPrev").addEventListener("click",function(){if(state.weekOffset>-1){state.weekOffset--;sfx("tap");var t=new Date();renderDay(t,findNow(t,settings));}});
+$("wkNext").addEventListener("click",function(){if(state.weekOffset<12){state.weekOffset++;sfx("tap");var t=new Date();renderDay(t,findNow(t,settings));}});
+document.querySelectorAll("#dayMark button").forEach(function(btn){btn.addEventListener("click",function(){if(!btn.disabled) setMark(state.selected||new Date(),btn.getAttribute("data-mark"));});});
 $("dtOffice").addEventListener("click",function(){setToday("office");});
 $("sndBtn").addEventListener("click",toggleSound);
 $("soundTog").addEventListener("click",toggleSound);
@@ -1133,44 +1342,53 @@ $("copyLink").addEventListener("click",function(){
 });
 document.addEventListener("pointerdown",function(){unlock();if(settings.awake&&!lock) requestWake();},{passive:true});
 document.addEventListener("keydown",unlock);
-document.addEventListener("visibilitychange",function(){if(!document.hidden){tick();requestWake();reschedule(false);checkUpdate();}});
+document.addEventListener("visibilitychange",function(){if(!document.hidden){tick();requestWake();reschedule(false);pushWidget();checkUpdate();}});
 
 /* Android app: a local notification at the start of every block. */
-var NOTIF_DAYS=10,CHANNEL="blocks";
+var NOTIF_DAYS=7,CHANNEL="blocks",WARN_CHANNEL="headsup";
 var LN=NATIVE?((CAP.Plugins&&CAP.Plugins.LocalNotifications)||(typeof CAP.registerPlugin==="function"?CAP.registerPlugin("LocalNotifications"):null)):null;
-var notif={perm:"unknown",count:0,next:null,error:"",busy:false,last:0,sig:"",timer:null};
+var notif={perm:"unknown",count:0,warns:0,next:null,error:"",busy:false,last:0,sig:"",timer:null};
 function notifPlan(now){
   var out=[],start=startOfDay(now),id=1;
   for(var d=0;d<NOTIF_DAYS;d++){
-    timeline(addDays(start,d),settings).forEach(function(b){
-      if(b.startAt<=now) return;
-      out.push({id:id++,at:b.startAt,title:b.title,body:hhmm(b.startAt)+"–"+hhmm(b.endAt)+(b.detail?" · "+b.detail:"")});
+    var tl=timeline(addDays(start,d),settings);
+    tl.forEach(function(b,i){
+      if(b.startAt>now) out.push({id:id++,kind:"block",at:b.startAt,title:b.title,body:hhmm(b.startAt)+"–"+hhmm(b.endAt)+(b.detail?" · "+b.detail:"")});
+      if(settings.warn&&i>0){
+        var at=new Date(b.startAt.getTime()-5*60000);
+        if(at>now) out.push({id:id++,kind:"warn",at:at,title:"In 5 min: "+b.title,body:"Time to wrap up: "+tl[i-1].title});
+      }
     });
   }
   var keep=new Date(start.getFullYear(),start.getMonth(),start.getDate()+NOTIF_DAYS-1,12,5);
-  if(keep>now) out.push({id:id++,at:keep,title:"Open Orders today",body:"Open the app so your block reminders keep coming."});
+  if(keep>now) out.push({id:id++,kind:"block",at:keep,title:"Open Orders today",body:"Open the app so your block reminders keep coming."});
   out.sort(function(a,b){return a.at-b.at;});
   return out;
 }
-function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify,settings.urgent||null]);}
+function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify,settings.urgent||null,settings.dayMarks,settings.warn]);}
 function errText(e){return (e&&e.message)||String(e);}
 function ensureChannel(){
   if(!LN) return Promise.resolve();
-  return LN.createChannel({id:CHANNEL,name:"Block starts",description:"A notification when each block of your day starts",importance:4,visibility:1,vibration:true,lights:true,lightColor:"#1E5BD0"}).catch(function(){});
+  return Promise.all([
+    LN.createChannel({id:CHANNEL,name:"Block starts",description:"A notification when each block of your day starts",importance:4,visibility:1,vibration:true,lights:true,lightColor:"#1E5BD0"}).catch(function(){}),
+    LN.createChannel({id:WARN_CHANNEL,name:"5-minute heads-up",description:"A soft tick 5 minutes before each block",importance:3,visibility:1,vibration:true,sound:"heads_up.wav"}).catch(function(){})
+  ]);
 }
-function toNative(n){return {id:n.id,title:n.title,body:n.body,channelId:CHANNEL,smallIcon:"ic_stat_orders",iconColor:"#1E5BD0",schedule:{at:n.at,allowWhileIdle:true}};}
+function toNative(n){return {id:n.id,title:n.title,body:n.body,channelId:n.kind==="warn"?WARN_CHANNEL:CHANNEL,smallIcon:"ic_stat_orders",iconColor:"#1E5BD0",schedule:{at:n.at,allowWhileIdle:true}};}
 function renderNotif(){
   if(!NATIVE) return;
   var tog=$("notifTog"),txt;
   tog.setAttribute("aria-pressed",String(settings.notify));
   tog.textContent=settings.notify?"On":"Off";
+  $("warnTog").setAttribute("aria-pressed",String(settings.warn));
+  $("warnTog").textContent=settings.warn?"On":"Off";
   $("notifAllow").hidden=notif.perm==="granted";
   if(notif.error) txt="Could not set the reminders: "+notif.error;
   else if(notif.perm==="denied") txt="Notifications are blocked for Orders. Tap Allow notifications, or turn them on in Android's settings for the app.";
   else if(notif.perm!=="granted") txt="Tap Allow notifications so each block can reach you.";
   else if(!settings.notify) txt="Reminders are off.";
   else if(notif.busy) txt="Setting the reminders.";
-  else if(notif.next) txt="Next: "+DOW[notif.next.at.getDay()]+" "+hhmm(notif.next.at)+", "+notif.next.title+". "+notif.count+" reminders set for the next "+NOTIF_DAYS+" days.";
+  else if(notif.next) txt="Next: "+DOW[notif.next.at.getDay()]+" "+hhmm(notif.next.at)+", "+notif.next.title+". "+notif.count+" block alerts"+(notif.warns?" and "+notif.warns+" heads-ups":"")+" set for the next "+NOTIF_DAYS+" days.";
   else txt="No reminders set yet.";
   $("notifStatus").textContent=txt;
 }
@@ -1186,13 +1404,32 @@ function reschedule(force){
       var old=((pend&&pend.notifications)||[]).map(function(n){return {id:n.id};});
       return old.length?LN.cancel({notifications:old}):null;
     }).then(function(){
-      if(!settings.notify){notif.count=0;notif.next=null;return null;}
-      var plan=notifPlan(new Date());
-      return LN.schedule({notifications:plan.map(toNative)}).then(function(){notif.count=plan.length;notif.next=plan[0]||null;});
+      if(!settings.notify){notif.count=0;notif.warns=0;notif.next=null;return null;}
+      var plan=notifPlan(new Date()),blocks=plan.filter(function(n){return n.kind!=="warn";});
+      return LN.schedule({notifications:plan.map(toNative)}).then(function(){notif.count=blocks.length;notif.warns=plan.length-blocks.length;notif.next=blocks[0]||null;});
     }).then(function(){notif.sig=sig;notif.last=Date.now();});
   }).catch(function(e){notif.error=errText(e);}).then(function(){notif.busy=false;renderNotif();});
 }
-function scheduleSoon(force){if(!LN) return;clearTimeout(notif.timer);notif.timer=setTimeout(function(){reschedule(force);},700);}
+function scheduleSoon(force){clearTimeout(notif.timer);notif.timer=setTimeout(function(){pushWidget();if(LN) reschedule(force);},700);}
+
+/* Android home screen widget: the app hands it the next days of blocks. */
+var OW=NATIVE?((CAP.Plugins&&CAP.Plugins.OrdersWidget)||(typeof CAP.registerPlugin==="function"?CAP.registerPlugin("OrdersWidget"):null)):null;
+var WIDGET_COLORS={sleep:"#A3A8F7",routine:"#57CCD5",body:"#6FD17B",study:"#8AAEFF",work:"#AEB8C4",home:"#E8B357",meal:"#FF9468",people:"#F286C7",mind:"#C0A4F7",commute:"#A6C1DC",plan:"#C6D56A"};
+function widgetText(s){return String(s||"").replace(/[|\r\n]+/g," ");}
+function widgetData(now){
+  var start=startOfDay(now),lines=[];
+  for(var d=-1;d<NOTIF_DAYS;d++){
+    timeline(addDays(start,d),settings).forEach(function(b){
+      if(b.endAt<=now) return;
+      lines.push([b.startAt.getTime(),b.endAt.getTime(),WIDGET_COLORS[b.cat]||"#8AAEFF",widgetText(b.title),widgetText(b.detail)].join("|"));
+    });
+  }
+  return lines.join("\n");
+}
+function pushWidget(){
+  if(!OW||typeof OW.update!=="function") return;
+  try{var p=OW.update({blocks:widgetData(new Date())});if(p&&p.catch) p.catch(function(){});}catch(e){}
+}
 function askPermission(){
   return LN.requestPermissions().then(function(q){
     notif.perm=q.display;
@@ -1212,6 +1449,7 @@ function checkUpdate(){
 }
 if(NATIVE){
   $("notifTog").addEventListener("click",function(){settings.notify=!settings.notify;save(S_KEY,settings);sfx("toggle");renderNotif();reschedule(true);});
+  $("warnTog").addEventListener("click",function(){settings.warn=!settings.warn;save(S_KEY,settings);sfx("toggle");renderNotif();reschedule(true);});
   $("notifAllow").addEventListener("click",function(){if(LN) askPermission().catch(function(e){notif.error=errText(e);renderNotif();});});
   $("notifTest").addEventListener("click",function(){
     if(!LN) return;
@@ -1251,6 +1489,9 @@ if(NATIVE&&LN){
     if(!settings.askedNotif){settings.askedNotif=true;save(S_KEY,settings);return askPermission();}
   }).catch(function(e){notif.error=errText(e);}).then(renderNotif);
   checkUpdate();
+}
+if(NATIVE){
+  pushWidget();
 }
 
 save(S_KEY,settings);

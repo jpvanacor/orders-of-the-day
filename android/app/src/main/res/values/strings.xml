@@ -4,4 +4,6 @@
     <string name="title_activity_main">Orders</string>
     <string name="package_name">io.github.jpvanacor.orders</string>
     <string name="custom_url_scheme">io.github.jpvanacor.orders</string>
+    <string name="widget_name">Orders</string>
+    <string name="widget_description">The block you should be doing now, and the next one.</string>
 </resources>
