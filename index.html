@@ -777,7 +777,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=6;
+var APP_VERSION=7;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -1288,7 +1288,7 @@ function tick(){
   if(key!==state.lastKey||day!==state.lastDay){
     var changed=state.lastKey!==null&&key!==state.lastKey;
     renderAll(now,changed);
-    if(changed) sfx("block");
+    if(changed&&!(r&&QUIET[r.block.key])) sfx("block");
   } else {
     $("clock").textContent=hhmm(now);
     if(r) tickNow(now,r);
@@ -1346,6 +1346,8 @@ document.addEventListener("visibilitychange",function(){if(!document.hidden){tic
 
 /* Android app: a local notification at the start of every block. */
 var NOTIF_DAYS=7,CHANNEL="blocks",WARN_CHANNEL="headsup";
+/* Quiet nights: nothing rings once you're in bed, or while you rest on a sick day. */
+var QUIET={bed:1,sleep:1,rest1:1,rest2:1};
 var LN=NATIVE?((CAP.Plugins&&CAP.Plugins.LocalNotifications)||(typeof CAP.registerPlugin==="function"?CAP.registerPlugin("LocalNotifications"):null)):null;
 var notif={perm:"unknown",count:0,warns:0,next:null,error:"",busy:false,last:0,sig:"",timer:null};
 function notifPlan(now){
@@ -1353,8 +1355,9 @@ function notifPlan(now){
   for(var d=0;d<NOTIF_DAYS;d++){
     var tl=timeline(addDays(start,d),settings);
     tl.forEach(function(b,i){
+      if(QUIET[b.key]) return;
       if(b.startAt>now) out.push({id:id++,kind:"block",at:b.startAt,title:b.title,body:hhmm(b.startAt)+"–"+hhmm(b.endAt)+(b.detail?" · "+b.detail:"")});
-      if(settings.warn&&i>0){
+      if(settings.warn&&i>0&&!b.ctx.sick){
         var at=new Date(b.startAt.getTime()-5*60000);
         if(at>now) out.push({id:id++,kind:"warn",at:at,title:"In 5 min: "+b.title,body:"Time to wrap up: "+tl[i-1].title});
       }
