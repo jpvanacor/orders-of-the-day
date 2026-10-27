@@ -156,6 +156,20 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .chip.is-sick{box-shadow:inset 0 -4px 0 var(--cat-sleep)}
 .weeknav{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
 .weeknav span{font:700 .78rem/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.wt{margin-top:.75rem;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:.9rem 1.1rem;display:grid;gap:.6rem}
+.wt-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
+.wt-k{display:flex;align-items:center;gap:.5rem;font:700 .74rem/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase}
+.wt-k i{width:.65rem;height:.65rem;border-radius:50%;background:var(--c)}
+.wt.is-running .wt-k i{animation:blink 1.6s ease-in-out infinite}
+.wt-state{font-size:.9rem;color:var(--muted)}
+.wt-main{display:flex;justify-content:space-between;align-items:baseline;gap:.4rem 1rem;flex-wrap:wrap}
+.wt-left{font:600 2.1rem/1 var(--font-mono);font-variant-numeric:tabular-nums}
+.wt-end{font:500 .92rem/1.3 var(--font-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.wt-row{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap}
+.wt-len{display:flex;align-items:center;gap:.5rem}
+.wt-len b{font:600 1rem/1 var(--font-mono);min-width:3.4rem;text-align:center}
+.wt-btns{display:flex;gap:.4rem;margin-left:auto}
+.wt-btns .switch.go{background:var(--ink);border-color:var(--ink);color:var(--bg)}
 .wkbtn{appearance:none;width:2.4rem;height:2.4rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:50%;font:600 1.2rem/1 var(--font-mono);cursor:pointer}
 .daymark{display:grid;grid-template-columns:repeat(3,1fr);margin:0 0 1rem}
 .daymark button:disabled{opacity:.4;cursor:default}
@@ -290,6 +304,15 @@ details .checks{margin-top:.3rem}
         <div id="nowChecks" hidden></div>
         <div id="nowScore" hidden></div>
       </article>
+      <section class="wt" id="workTimer" aria-label="Work timer" hidden style="--c:var(--cat-work)">
+        <div class="wt-top"><span class="wt-k"><i aria-hidden="true"></i>Work timer</span><span class="wt-state" id="wtState">Not started</span></div>
+        <div class="wt-main"><span class="wt-left" id="wtLeft">7:10:00</span><span class="wt-end" id="wtEnd">Start it when you start working</span></div>
+        <div class="bar" aria-hidden="true"><span id="wtBar"></span></div>
+        <div class="wt-row">
+          <div class="wt-len" id="wtLen"><button type="button" class="wkbtn" id="wtMinus" aria-label="5 minutes less">&#8722;</button><b id="wtTarget">7h10</b><button type="button" class="wkbtn" id="wtPlus" aria-label="5 minutes more">+</button></div>
+          <div class="wt-btns"><button type="button" class="switch go" id="wtStart">Start</button><button type="button" class="switch" id="wtPause" hidden>Pause</button><button type="button" class="switch" id="wtStop" hidden>Stop</button></div>
+        </div>
+      </section>
       <p class="next" id="nextRow" style="--c:var(--cat-meal)"><span class="k">Next</span><span class="dot" aria-hidden="true"></span><time id="nextTime">12:00</time><b id="nextTitle">Lunch and a walk</b></p>
       <p class="rule"><b>Standing rule.</b> Missed a block? Drop it and do what this screen says now. Never try to catch up.</p>
     </section>
@@ -777,7 +800,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=7;
+var APP_VERSION=8;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -791,6 +814,8 @@ if(typeof settings.notify!=="boolean") settings.notify=true;
 if(typeof settings.warn!=="boolean") settings.warn=true;
 if(!settings.dayMarks||typeof settings.dayMarks!=="object") settings.dayMarks={};
 var checks=load(C_KEY,null)||{};
+var T_KEY="ood.timer.v1",timer=load(T_KEY,null),stopArm=0;
+if(typeof settings.timerTarget!=="number") settings.timerTarget=430;
 (function prune(){
   var cut=ymd(addDays(new Date(),-21));
   Object.keys(checks).forEach(function(k){if(k<cut) delete checks[k];});
@@ -1247,6 +1272,76 @@ function endUrgent(){
   scheduleSoon(true);
 }
 
+/* Work timer: counts work time from when you actually start, pauses for lunch, rings when it's done. */
+function saveTimer(){save(T_KEY,timer);}
+function fmtClock(ms){var s=Math.max(0,Math.round(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h+":"+pad(m)+":"+pad(x);}
+function fmtLen(min){return Math.floor(min/60)+"h"+pad(min%60);}
+function timerState(nowMs){
+  if(!timer) return null;
+  var ref=timer.stoppedAt||timer.pausedAt||nowMs,worked=Math.max(0,ref-timer.startedAt-(timer.pausedTotal||0)),left=timer.target*60000-worked;
+  return {worked:worked,left:left,stopped:!!timer.stoppedAt,paused:!timer.stoppedAt&&!!timer.pausedAt,running:!timer.stoppedAt&&!timer.pausedAt,endsAt:nowMs+left};
+}
+function renderTimer(now){
+  var box=$("workTimer"),nowMs=now.getTime();
+  if(timer&&timer.day!==ymd(now)&&(timer.stoppedAt||nowMs-timer.startedAt>20*3600000)){timer=null;saveTimer();}
+  var st=timerState(nowMs),lastWork=null;
+  timeline(now,settings).forEach(function(b){if(b.cat==="work") lastWork=b.endAt;});
+  var show=!!st||(!!lastWork&&now<lastWork);
+  box.hidden=!show;
+  if(!show) return;
+  var target=timer?timer.target:settings.timerTarget,state,left,end,c,cls="";
+  if(!st){state="Not started";left=fmtClock(target*60000);end="Start it when you start working";c="var(--cat-work)";}
+  else if(st.stopped){state="Stopped";left=fmtLen(Math.round(st.worked/60000))+" worked";end=hhmm(new Date(timer.startedAt))+" to "+hhmm(new Date(timer.stoppedAt));c="var(--cat-plan)";}
+  else if(st.paused){state="Paused at "+hhmm(new Date(timer.pausedAt));left=fmtClock(st.left);end="Resume now and you finish at "+hhmm(new Date(nowMs+Math.max(0,st.left)));c="var(--cat-home)";}
+  else if(st.left>0){state="Running since "+hhmm(new Date(timer.startedAt));left=fmtClock(st.left);end="Ends at "+hhmm(new Date(st.endsAt));c="var(--cat-body)";cls="is-running";}
+  else {state="Work time done";left="+"+fmtClock(-st.left);end="Done at "+hhmm(new Date(st.endsAt))+". Stop when you're ready.";c="var(--cat-plan)";}
+  box.className="wt"+(cls?" "+cls:"");
+  box.style.setProperty("--c",c);
+  $("wtState").textContent=state;
+  $("wtLeft").textContent=left;
+  $("wtEnd").textContent=end;
+  $("wtTarget").textContent=fmtLen(target);
+  $("wtBar").style.width=(st?Math.min(100,100*st.worked/(target*60000)):0).toFixed(2)+"%";
+  $("wtStart").hidden=!!st;
+  $("wtPause").hidden=!st;
+  $("wtPause").textContent=st&&(st.paused||st.stopped)?"Resume":"Pause";
+  $("wtStop").hidden=!st||st.stopped;
+  $("wtStop").textContent=Date.now()<stopArm?"Tap again":"Stop";
+  $("wtLen").hidden=!!st&&st.stopped;
+  if(st&&st.running&&st.left<=0&&!timer.doneSeen){
+    timer.doneSeen=true;saveTimer();
+    sfx("day");
+    celebrate({cat:"work"},center(box),false);
+  }
+}
+function startTimer(){
+  timer={day:ymd(new Date()),target:settings.timerTarget,startedAt:Date.now(),pausedAt:null,pausedTotal:0,stoppedAt:null};
+  saveTimer();sfx("toggle");renderTimer(new Date());scheduleSoon(true);
+}
+function pauseOrResume(){
+  if(!timer) return;
+  var n=Date.now();
+  if(timer.stoppedAt){timer.pausedTotal=(timer.pausedTotal||0)+(n-timer.stoppedAt);timer.stoppedAt=null;}
+  else if(timer.pausedAt){timer.pausedTotal=(timer.pausedTotal||0)+(n-timer.pausedAt);timer.pausedAt=null;}
+  else timer.pausedAt=n;
+  saveTimer();sfx("toggle");renderTimer(new Date());scheduleSoon(true);
+}
+function stopTimer(){
+  if(!timer||timer.stoppedAt) return;
+  var n=Date.now();
+  if(n>stopArm){stopArm=n+3000;sfx("tap");renderTimer(new Date());return;}
+  stopArm=0;
+  if(timer.pausedAt){timer.pausedTotal=(timer.pausedTotal||0)+(n-timer.pausedAt);timer.pausedAt=null;}
+  timer.stoppedAt=n;
+  saveTimer();sfx("done");renderTimer(new Date());scheduleSoon(true);
+}
+function adjustTimer(delta){
+  var live=timer&&!timer.stoppedAt,t=Math.max(60,Math.min(720,(live?timer.target:settings.timerTarget)+delta));
+  settings.timerTarget=t;save(S_KEY,settings);
+  if(live){timer.target=t;timer.doneSeen=false;saveTimer();scheduleSoon(true);}
+  sfx("tap");renderTimer(new Date());
+}
+
 function renderAll(now,animate){
   now=now||new Date();
   var r=findNow(now,settings);
@@ -1258,6 +1353,7 @@ function renderAll(now,animate){
   renderPlan(now);
   renderUrgent(now);
   renderDayBar(now);
+  renderTimer(now);
   state.lastKey=r?r.block.day+"/"+r.block.key:"";
   state.lastDay=ymd(now);
 }
@@ -1292,6 +1388,7 @@ function tick(){
   } else {
     $("clock").textContent=hhmm(now);
     if(r) tickNow(now,r);
+    renderTimer(now);
   }
 }
 
@@ -1322,6 +1419,11 @@ function selectLink(){
 
 VIEWS.forEach(function(v){$("tab-"+v).addEventListener("click",function(){if(state.view!==v) sfx("tap");show(v,true);});});
 $("dtHome").addEventListener("click",function(){setToday("home");});
+$("wtStart").addEventListener("click",startTimer);
+$("wtPause").addEventListener("click",pauseOrResume);
+$("wtStop").addEventListener("click",stopTimer);
+$("wtMinus").addEventListener("click",function(){adjustTimer(-5);});
+$("wtPlus").addEventListener("click",function(){adjustTimer(5);});
 $("urgentPick").addEventListener("change",function(){setUrgent(this.value);});
 $("urgentMove").addEventListener("change",function(){if(this.value) setUrgent(this.value);});
 $("urgentEnd").addEventListener("click",endUrgent);
@@ -1363,12 +1465,18 @@ function notifPlan(now){
       }
     });
   }
+  var ts=timerState(now.getTime());
+  if(ts&&ts.running&&ts.left>0){
+    out.push({id:id++,kind:"block",at:new Date(ts.endsAt),title:"Work time done",body:fmtLen(timer.target)+" of work since "+hhmm(new Date(timer.startedAt))+". Finish what you're on and stop."});
+    var tw=new Date(ts.endsAt-5*60000);
+    if(settings.warn&&tw>now) out.push({id:id++,kind:"warn",at:tw,title:"In 5 min: work time done",body:"Start wrapping up."});
+  }
   var keep=new Date(start.getFullYear(),start.getMonth(),start.getDate()+NOTIF_DAYS-1,12,5);
   if(keep>now) out.push({id:id++,kind:"block",at:keep,title:"Open Orders today",body:"Open the app so your block reminders keep coming."});
   out.sort(function(a,b){return a.at-b.at;});
   return out;
 }
-function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify,settings.urgent||null,settings.dayMarks,settings.warn]);}
+function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify,settings.urgent||null,settings.dayMarks,settings.warn,timer?[timer.target,timer.startedAt,timer.pausedAt,timer.pausedTotal,timer.stoppedAt]:null]);}
 function errText(e){return (e&&e.message)||String(e);}
 function ensureChannel(){
   if(!LN) return Promise.resolve();
@@ -1396,7 +1504,8 @@ function renderNotif(){
   $("notifStatus").textContent=txt;
 }
 function reschedule(force){
-  if(!LN||notif.busy) return Promise.resolve();
+  if(!LN) return Promise.resolve();
+  if(notif.busy){notif.again=true;return Promise.resolve();}
   var sig=settingsSig();
   if(!force&&sig===notif.sig&&Date.now()-notif.last<6*3600*1000) return Promise.resolve();
   notif.busy=true;notif.error="";renderNotif();
@@ -1411,7 +1520,7 @@ function reschedule(force){
       var plan=notifPlan(new Date()),blocks=plan.filter(function(n){return n.kind!=="warn";});
       return LN.schedule({notifications:plan.map(toNative)}).then(function(){notif.count=blocks.length;notif.warns=plan.length-blocks.length;notif.next=blocks[0]||null;});
     }).then(function(){notif.sig=sig;notif.last=Date.now();});
-  }).catch(function(e){notif.error=errText(e);}).then(function(){notif.busy=false;renderNotif();});
+  }).catch(function(e){notif.error=errText(e);}).then(function(){notif.busy=false;renderNotif();if(notif.again){notif.again=false;reschedule(true);}});
 }
 function scheduleSoon(force){clearTimeout(notif.timer);notif.timer=setTimeout(function(){pushWidget();if(LN) reschedule(force);},700);}
 
