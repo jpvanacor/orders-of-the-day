@@ -156,24 +156,30 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .chip.is-sick{box-shadow:inset 0 -4px 0 var(--cat-sleep)}
 .weeknav{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
 .weeknav span{font:700 .78rem/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.wt{margin-top:.75rem;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:.9rem 1.1rem;display:grid;gap:.6rem}
-.wt-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
-.wt-k{display:flex;align-items:center;gap:.5rem;font:700 .74rem/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase}
-.wt-k i{width:.65rem;height:.65rem;border-radius:50%;background:var(--c)}
-.wt.is-running .wt-k i{animation:blink 1.6s ease-in-out infinite}
-.wt-state{font-size:.9rem;color:var(--muted)}
-.wt-main{display:flex;justify-content:space-between;align-items:baseline;gap:.4rem 1rem;flex-wrap:wrap}
-.wt-left{font:600 2.1rem/1 var(--font-mono);font-variant-numeric:tabular-nums}
-.wt-end{font:500 .92rem/1.3 var(--font-mono);color:var(--muted);font-variant-numeric:tabular-nums}
-.wt-row{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap}
-.wt-len{display:flex;align-items:center;gap:.5rem}
-.wt-len b{font:600 1rem/1 var(--font-mono);min-width:3.4rem;text-align:center}
-.wt-btns{display:flex;gap:.4rem;margin-left:auto}
-.wt-btns .switch.go{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.trackers{margin-top:.75rem;background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.trk{position:relative;display:grid;grid-template-columns:4.6rem minmax(0,1fr) auto;align-items:center;gap:.5rem;padding:.55rem .75rem .6rem}
+.trk+.trk{border-top:1px solid var(--line)}
+.trk-k{display:flex;align-items:center;gap:.4rem;font:700 .66rem/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.trk-k i{width:.5rem;height:.5rem;border-radius:50%;background:var(--c);flex:none}
+.trk.is-running .trk-k i{animation:blink 1.6s ease-in-out infinite}
+.trk-mid{display:flex;align-items:center;gap:.25rem .55rem;min-width:0;flex-wrap:wrap}
+.trk-val{font:600 1.02rem/1 var(--font-mono);font-variant-numeric:tabular-nums}
+.trk-sub{font:500 .76rem/1.2 var(--font-mono);color:var(--muted);white-space:nowrap}
+.trk.is-due .trk-sub{color:var(--c);font-weight:700}
+.trk-adj{display:flex;gap:.25rem}
+.trk-btns{display:flex;gap:.3rem;align-items:center}
+.sbtn{appearance:none;height:1.9rem;min-width:1.9rem;padding:0 .6rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;font:700 .66rem/1 var(--font-body);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:transform .12s ease,background-color .2s}
+.sbtn:active{transform:scale(.94)}
+.trk-line{position:absolute;left:0;right:0;bottom:0;height:3px}
+.trk-line span{display:block;height:100%;width:0;background:var(--c);transition:width .9s linear}
+.cups{display:flex;gap:3px}
+.cups i{width:.42rem;height:.85rem;border-radius:2px;background:var(--soft);transition:background-color .3s}
+.cups i.on{background:var(--c)}
+.cups i.just{animation:pop .4s cubic-bezier(.3,1.6,.5,1)}
 .wkbtn{appearance:none;width:2.4rem;height:2.4rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:50%;font:600 1.2rem/1 var(--font-mono);cursor:pointer}
 .daymark{display:grid;grid-template-columns:repeat(3,1fr);margin:0 0 1rem}
 .daymark button:disabled{opacity:.4;cursor:default}
-.score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35rem;margin:.5rem 0 .7rem}
+.score{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.35rem;margin:.5rem 0 .7rem}
 .tile{border:1px solid var(--line);border-radius:4px;padding:.65rem .55rem;display:grid;gap:.35rem;background:var(--surface);min-width:0}
 .tile b{font:600 1.2rem/1 var(--font-mono);font-variant-numeric:tabular-nums}
 .tile small{font:700 .72rem/1.25 var(--font-body);color:var(--muted)}
@@ -304,16 +310,24 @@ details .checks{margin-top:.3rem}
         <div id="nowChecks" hidden></div>
         <div id="nowScore" hidden></div>
       </article>
-      <section class="wt" id="workTimer" aria-label="Work timer" hidden style="--c:var(--cat-work)">
-        <div class="wt-top"><span class="wt-k"><i aria-hidden="true"></i>Work timer</span><span class="wt-state" id="wtState">Not started</span></div>
-        <div class="wt-main"><span class="wt-left" id="wtLeft">7:10:00</span><span class="wt-end" id="wtEnd">Start it when you start working</span></div>
-        <div class="bar" aria-hidden="true"><span id="wtBar"></span></div>
-        <div class="wt-row">
-          <div class="wt-len" id="wtLen"><button type="button" class="wkbtn" id="wtMinus" aria-label="5 minutes less">&#8722;</button><b id="wtTarget">7h10</b><button type="button" class="wkbtn" id="wtPlus" aria-label="5 minutes more">+</button></div>
-          <div class="wt-btns"><button type="button" class="switch go" id="wtStart">Start</button><button type="button" class="switch" id="wtPause" hidden>Pause</button><button type="button" class="switch" id="wtStop" hidden>Stop</button></div>
-        </div>
-      </section>
       <p class="next" id="nextRow" style="--c:var(--cat-meal)"><span class="k">Next</span><span class="dot" aria-hidden="true"></span><time id="nextTime">12:00</time><b id="nextTitle">Lunch and a walk</b></p>
+      <div class="trackers" id="trackers">
+        <div class="trk" id="workTimer" role="group" aria-label="Work timer" hidden style="--c:var(--cat-work)">
+          <span class="trk-k"><i aria-hidden="true"></i>Work</span>
+          <span class="trk-mid">
+            <span class="trk-val" id="wtLeft">7h10</span>
+            <span class="trk-sub" id="wtEnd" hidden></span>
+            <span class="trk-adj" id="wtLen"><button type="button" class="sbtn" id="wtMinus" aria-label="5 minutes less">&#8722;</button><button type="button" class="sbtn" id="wtPlus" aria-label="5 minutes more">+</button></span>
+          </span>
+          <span class="trk-btns"><button type="button" class="sbtn" id="wtStart">Start</button><button type="button" class="sbtn" id="wtPause" hidden>Pause</button><button type="button" class="sbtn" id="wtStop" hidden>Stop</button></span>
+          <span class="trk-line" aria-hidden="true"><span id="wtBar"></span></span>
+        </div>
+        <div class="trk" id="waterRow" role="group" aria-label="Water" style="--c:var(--cat-routine)">
+          <span class="trk-k"><i aria-hidden="true"></i>Water</span>
+          <span class="trk-mid"><span class="cups" id="cups" aria-hidden="true"></span><span class="trk-val" id="waterCount">0/10</span><span class="trk-sub" id="waterNext"></span></span>
+          <span class="trk-btns"><button type="button" class="sbtn" id="waterUndo" aria-label="Remove the last cup" hidden>&#8722;</button><button type="button" class="sbtn" id="waterAdd">+ Cup</button></span>
+        </div>
+      </div>
       <p class="rule"><b>Standing rule.</b> Missed a block? Drop it and do what this screen says now. Never try to catch up.</p>
     </section>
 
@@ -360,6 +374,7 @@ details .checks{margin-top:.3rem}
         <h2>Notifications</h2>
         <div class="switchrow"><span>A notification when each block starts, even with the app closed</span><button type="button" class="switch" id="notifTog" aria-pressed="true">On</button></div>
         <div class="switchrow" style="margin-top:.9rem"><span>A quiet heads-up 5 minutes before each block</span><button type="button" class="switch" id="warnTog" aria-pressed="true">On</button></div>
+        <div class="switchrow" style="margin-top:.9rem"><span>Water: a cup (200 ml) about every hour, up to 10 a day, until 20:00</span><button type="button" class="switch" id="waterTog" aria-pressed="true">On</button></div>
         <p class="hint" id="notifStatus">Checking notifications.</p>
         <div class="btnrow"><button type="button" class="switch" id="notifAllow" hidden>Allow notifications</button><button type="button" class="switch" id="notifTest">Send a test</button></div>
       </section>
@@ -800,7 +815,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=8;
+var APP_VERSION=9;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -812,6 +827,7 @@ if(typeof settings.sound!=="boolean") settings.sound=true;
 if(typeof settings.awake!=="boolean") settings.awake=false;
 if(typeof settings.notify!=="boolean") settings.notify=true;
 if(typeof settings.warn!=="boolean") settings.warn=true;
+if(typeof settings.water!=="boolean") settings.water=true;
 if(!settings.dayMarks||typeof settings.dayMarks!=="object") settings.dayMarks={};
 var checks=load(C_KEY,null)||{};
 var T_KEY="ood.timer.v1",timer=load(T_KEY,null),stopArm=0;
@@ -1230,7 +1246,9 @@ function fmtH(min){var h=Math.floor(min/60),m=min%60;return h+"h"+(m?pad(m):"");
 function renderScore(box,now){
   var s=weekScore(now,settings,checks),grid=el("div","score");
   box.textContent="";
-  [[String(s.train.done),"of "+s.train.plan+" training sessions"],[fmtH(s.study.done),"of "+fmtH(s.study.plan)+" study"],[(s.items.all?Math.round(100*s.items.done/s.items.all):0)+"%","of the checklist"]].forEach(function(x){
+  var cupsWeek=0,daysWeek=0;
+  for(var d=s.from;d<=s.to;d=addDays(d,1)){cupsWeek+=cupsOn(ymd(d)).length;daysWeek++;}
+  [[String(s.train.done),"of "+s.train.plan+" training sessions"],[fmtH(s.study.done),"of "+fmtH(s.study.plan)+" study"],[String(cupsWeek),"of "+(daysWeek*WATER.goal)+" cups of water"],[(s.items.all?Math.round(100*s.items.done/s.items.all):0)+"%","of the checklist"]].forEach(function(x){
     var t=el("div","tile");t.append(el("b",null,x[0]),el("small",null,x[1]));grid.append(t);
   });
   box.append(el("p","sc-k","Since "+shortDay(s.from)),grid,
@@ -1289,31 +1307,94 @@ function renderTimer(now){
   var show=!!st||(!!lastWork&&now<lastWork);
   box.hidden=!show;
   if(!show) return;
-  var target=timer?timer.target:settings.timerTarget,state,left,end,c,cls="";
-  if(!st){state="Not started";left=fmtClock(target*60000);end="Start it when you start working";c="var(--cat-work)";}
-  else if(st.stopped){state="Stopped";left=fmtLen(Math.round(st.worked/60000))+" worked";end=hhmm(new Date(timer.startedAt))+" to "+hhmm(new Date(timer.stoppedAt));c="var(--cat-plan)";}
-  else if(st.paused){state="Paused at "+hhmm(new Date(timer.pausedAt));left=fmtClock(st.left);end="Resume now and you finish at "+hhmm(new Date(nowMs+Math.max(0,st.left)));c="var(--cat-home)";}
-  else if(st.left>0){state="Running since "+hhmm(new Date(timer.startedAt));left=fmtClock(st.left);end="Ends at "+hhmm(new Date(st.endsAt));c="var(--cat-body)";cls="is-running";}
-  else {state="Work time done";left="+"+fmtClock(-st.left);end="Done at "+hhmm(new Date(st.endsAt))+". Stop when you're ready.";c="var(--cat-plan)";}
-  box.className="wt"+(cls?" "+cls:"");
+  var target=timer?timer.target:settings.timerTarget,val,sub="",c,cls="";
+  if(!st){val=fmtLen(target);c="var(--cat-work)";}
+  else if(st.stopped){val=fmtLen(Math.round(st.worked/60000));sub="worked, "+hhmm(new Date(timer.startedAt))+"–"+hhmm(new Date(timer.stoppedAt));c="var(--cat-plan)";}
+  else if(st.paused){val=fmtClock(st.left);sub="paused";c="var(--cat-home)";}
+  else if(st.left>0){val=fmtClock(st.left);sub="ends "+hhmm(new Date(st.endsAt));c="var(--cat-body)";cls="is-running";}
+  else {val="+"+fmtClock(-st.left);sub="done at "+hhmm(new Date(st.endsAt));c="var(--cat-plan)";cls="is-due";}
+  box.className="trk"+(cls?" "+cls:"");
   box.style.setProperty("--c",c);
-  $("wtState").textContent=state;
-  $("wtLeft").textContent=left;
-  $("wtEnd").textContent=end;
-  $("wtTarget").textContent=fmtLen(target);
+  $("wtLeft").textContent=val;
+  $("wtEnd").textContent=sub;
+  $("wtEnd").hidden=!sub;
+  $("wtLen").hidden=!!st;
   $("wtBar").style.width=(st?Math.min(100,100*st.worked/(target*60000)):0).toFixed(2)+"%";
   $("wtStart").hidden=!!st;
   $("wtPause").hidden=!st;
   $("wtPause").textContent=st&&(st.paused||st.stopped)?"Resume":"Pause";
   $("wtStop").hidden=!st||st.stopped;
-  $("wtStop").textContent=Date.now()<stopArm?"Tap again":"Stop";
-  $("wtLen").hidden=!!st&&st.stopped;
+  $("wtStop").textContent=Date.now()<stopArm?"Sure?":"Stop";
   if(st&&st.running&&st.left<=0&&!timer.doneSeen){
     timer.doneSeen=true;saveTimer();
     sfx("day");
     celebrate({cat:"work"},center(box),false);
   }
 }
+
+/* Water: a cup about every hour, logged with + Cup. */
+var W_KEY="ood.water.v1",waterLog=load(W_KEY,null)||{},WATER={every:60,cup:200,goal:10,endH:20};
+(function(){var cut=ymd(addDays(new Date(),-21));Object.keys(waterLog).forEach(function(k){if(k<cut) delete waterLog[k];});})();
+function cupsOn(key){return waterLog[key]||[];}
+function waterStart(tl){return tl[0].ctx.sick?tl[0].startAt:tl[0].endAt;}
+function waterNext(now){
+  var key=ymd(now),log=cupsOn(key),tl=timeline(now,settings);
+  if(log.length>=WATER.goal) return null;
+  var t=log.length?new Date(log[log.length-1]+WATER.every*60000):waterStart(tl),end=new Date(now.getFullYear(),now.getMonth(),now.getDate(),WATER.endH,0);
+  return t>end?null:t;
+}
+function waterTimes(day,now){
+  var tl=timeline(day,settings),log=cupsOn(ymd(day)),left=WATER.goal-log.length,out=[];
+  if(left<=0) return out;
+  if(tl[0].ctx.sick){
+    tl.forEach(function(b){if((b.cat==="meal"||b.key==="evening")&&b.startAt>now&&out.length<left) out.push(b.startAt);});
+    return out;
+  }
+  var end=new Date(day.getFullYear(),day.getMonth(),day.getDate(),WATER.endH,0);
+  var t=log.length?new Date(log[log.length-1]+WATER.every*60000):waterStart(tl);
+  while(t<=end&&out.length<left){
+    var quiet=tl.some(function(b){return QUIET[b.key]&&b.startAt<=t&&t<b.endAt;});
+    if(t>now&&!quiet) out.push(new Date(t));
+    t=new Date(t.getTime()+WATER.every*60000);
+  }
+  return out;
+}
+function renderWater(now,pop){
+  var log=cupsOn(ymd(now)),n=log.length,cups=$("cups"),row=$("waterRow"),next=waterNext(now),sub;
+  cups.textContent="";
+  for(var i=0;i<WATER.goal;i++){var s=el("i",i<n?"on":"");if(pop&&i===n-1) s.classList.add("just");cups.append(s);}
+  $("waterCount").textContent=n+"/"+WATER.goal;
+  if(n>=WATER.goal) sub="goal reached";
+  else if(!next) sub="done for today";
+  else if(next<=now) sub="due now";
+  else sub="next "+hhmm(next);
+  $("waterNext").textContent=sub;
+  row.classList.toggle("is-due",sub==="due now");
+  $("waterUndo").hidden=n===0;
+}
+function addCup(){
+  var k=ymd(new Date());
+  (waterLog[k]=waterLog[k]||[]).push(Date.now());
+  save(W_KEY,waterLog);
+  sfx(cupsOn(k).length===WATER.goal?"done":"check");
+  var c=center($("waterAdd"));
+  burst(c.x,c.y,["var(--cat-routine)"],8,{power:46,gravity:12,size:5,duration:520});
+  renderScore($("planScore"),new Date());
+  renderWater(new Date(),true);
+  scheduleSoon(true);
+}
+function undoCup(){
+  var k=ymd(new Date());
+  if(!cupsOn(k).length) return;
+  waterLog[k].pop();
+  if(!waterLog[k].length) delete waterLog[k];
+  save(W_KEY,waterLog);
+  sfx("uncheck");
+  renderScore($("planScore"),new Date());
+  renderWater(new Date(),false);
+  scheduleSoon(true);
+}
+
 function startTimer(){
   timer={day:ymd(new Date()),target:settings.timerTarget,startedAt:Date.now(),pausedAt:null,pausedTotal:0,stoppedAt:null};
   saveTimer();sfx("toggle");renderTimer(new Date());scheduleSoon(true);
@@ -1354,6 +1435,7 @@ function renderAll(now,animate){
   renderUrgent(now);
   renderDayBar(now);
   renderTimer(now);
+  renderWater(now,false);
   state.lastKey=r?r.block.day+"/"+r.block.key:"";
   state.lastDay=ymd(now);
 }
@@ -1389,6 +1471,7 @@ function tick(){
     $("clock").textContent=hhmm(now);
     if(r) tickNow(now,r);
     renderTimer(now);
+    if(now.getSeconds()===0) renderWater(now,false);
   }
 }
 
@@ -1420,6 +1503,8 @@ function selectLink(){
 VIEWS.forEach(function(v){$("tab-"+v).addEventListener("click",function(){if(state.view!==v) sfx("tap");show(v,true);});});
 $("dtHome").addEventListener("click",function(){setToday("home");});
 $("wtStart").addEventListener("click",startTimer);
+$("waterAdd").addEventListener("click",addCup);
+$("waterUndo").addEventListener("click",undoCup);
 $("wtPause").addEventListener("click",pauseOrResume);
 $("wtStop").addEventListener("click",stopTimer);
 $("wtMinus").addEventListener("click",function(){adjustTimer(-5);});
@@ -1471,12 +1556,22 @@ function notifPlan(now){
     var tw=new Date(ts.endsAt-5*60000);
     if(settings.warn&&tw>now) out.push({id:id++,kind:"warn",at:tw,title:"In 5 min: work time done",body:"Start wrapping up."});
   }
+  if(settings.water){
+    for(var wd=0;wd<NOTIF_DAYS;wd++){
+      waterTimes(addDays(start,wd),now).forEach(function(at){
+        var near=null;
+        out.forEach(function(n){if(n.kind==="block"&&!n.water&&Math.abs(n.at-at)<=10*60000&&(!near||Math.abs(n.at-at)<Math.abs(near.at-at))) near=n;});
+        if(near){near.water=true;near.body+=" · Drink a cup of water.";}
+        else out.push({id:id++,kind:"water",at:at,title:"Drink a cup of water",body:WATER.cup+" ml. Then tap + Cup in Orders."});
+      });
+    }
+  }
   var keep=new Date(start.getFullYear(),start.getMonth(),start.getDate()+NOTIF_DAYS-1,12,5);
   if(keep>now) out.push({id:id++,kind:"block",at:keep,title:"Open Orders today",body:"Open the app so your block reminders keep coming."});
   out.sort(function(a,b){return a.at-b.at;});
   return out;
 }
-function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify,settings.urgent||null,settings.dayMarks,settings.warn,timer?[timer.target,timer.startedAt,timer.pausedAt,timer.pausedTotal,timer.stoppedAt]:null]);}
+function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify,settings.urgent||null,settings.dayMarks,settings.warn,settings.water,waterLog[ymd(new Date())]||[],timer?[timer.target,timer.startedAt,timer.pausedAt,timer.pausedTotal,timer.stoppedAt]:null]);}
 function errText(e){return (e&&e.message)||String(e);}
 function ensureChannel(){
   if(!LN) return Promise.resolve();
@@ -1485,7 +1580,7 @@ function ensureChannel(){
     LN.createChannel({id:WARN_CHANNEL,name:"5-minute heads-up",description:"A soft tick 5 minutes before each block",importance:3,visibility:1,vibration:true,sound:"heads_up.wav"}).catch(function(){})
   ]);
 }
-function toNative(n){return {id:n.id,title:n.title,body:n.body,channelId:n.kind==="warn"?WARN_CHANNEL:CHANNEL,smallIcon:"ic_stat_orders",iconColor:"#1E5BD0",schedule:{at:n.at,allowWhileIdle:true}};}
+function toNative(n){return {id:n.id,title:n.title,body:n.body,channelId:n.kind==="block"?CHANNEL:WARN_CHANNEL,smallIcon:"ic_stat_orders",iconColor:"#1E5BD0",schedule:{at:n.at,allowWhileIdle:true}};}
 function renderNotif(){
   if(!NATIVE) return;
   var tog=$("notifTog"),txt;
@@ -1493,13 +1588,15 @@ function renderNotif(){
   tog.textContent=settings.notify?"On":"Off";
   $("warnTog").setAttribute("aria-pressed",String(settings.warn));
   $("warnTog").textContent=settings.warn?"On":"Off";
+  $("waterTog").setAttribute("aria-pressed",String(settings.water));
+  $("waterTog").textContent=settings.water?"On":"Off";
   $("notifAllow").hidden=notif.perm==="granted";
   if(notif.error) txt="Could not set the reminders: "+notif.error;
   else if(notif.perm==="denied") txt="Notifications are blocked for Orders. Tap Allow notifications, or turn them on in Android's settings for the app.";
   else if(notif.perm!=="granted") txt="Tap Allow notifications so each block can reach you.";
   else if(!settings.notify) txt="Reminders are off.";
   else if(notif.busy) txt="Setting the reminders.";
-  else if(notif.next) txt="Next: "+DOW[notif.next.at.getDay()]+" "+hhmm(notif.next.at)+", "+notif.next.title+". "+notif.count+" block alerts"+(notif.warns?" and "+notif.warns+" heads-ups":"")+" set for the next "+NOTIF_DAYS+" days.";
+  else if(notif.next) txt="Next: "+DOW[notif.next.at.getDay()]+" "+hhmm(notif.next.at)+", "+notif.next.title+". "+notif.count+" block alerts"+(notif.warns?", "+notif.warns+" heads-ups":"")+(notif.waters?", "+notif.waters+" water reminders":"")+" set for the next "+NOTIF_DAYS+" days.";
   else txt="No reminders set yet.";
   $("notifStatus").textContent=txt;
 }
@@ -1517,8 +1614,13 @@ function reschedule(force){
       return old.length?LN.cancel({notifications:old}):null;
     }).then(function(){
       if(!settings.notify){notif.count=0;notif.warns=0;notif.next=null;return null;}
-      var plan=notifPlan(new Date()),blocks=plan.filter(function(n){return n.kind!=="warn";});
-      return LN.schedule({notifications:plan.map(toNative)}).then(function(){notif.count=blocks.length;notif.warns=plan.length-blocks.length;notif.next=blocks[0]||null;});
+      var plan=notifPlan(new Date()),blocks=plan.filter(function(n){return n.kind==="block";});
+      return LN.schedule({notifications:plan.map(toNative)}).then(function(){
+        notif.count=blocks.length;
+        notif.warns=plan.filter(function(n){return n.kind==="warn";}).length;
+        notif.waters=plan.filter(function(n){return n.kind==="water";}).length;
+        notif.next=blocks[0]||null;
+      });
     }).then(function(){notif.sig=sig;notif.last=Date.now();});
   }).catch(function(e){notif.error=errText(e);}).then(function(){notif.busy=false;renderNotif();if(notif.again){notif.again=false;reschedule(true);}});
 }
@@ -1562,6 +1664,7 @@ function checkUpdate(){
 if(NATIVE){
   $("notifTog").addEventListener("click",function(){settings.notify=!settings.notify;save(S_KEY,settings);sfx("toggle");renderNotif();reschedule(true);});
   $("warnTog").addEventListener("click",function(){settings.warn=!settings.warn;save(S_KEY,settings);sfx("toggle");renderNotif();reschedule(true);});
+  $("waterTog").addEventListener("click",function(){settings.water=!settings.water;save(S_KEY,settings);sfx("toggle");renderNotif();reschedule(true);});
   $("notifAllow").addEventListener("click",function(){if(LN) askPermission().catch(function(e){notif.error=errText(e);renderNotif();});});
   $("notifTest").addEventListener("click",function(){
     if(!LN) return;
