@@ -7,6 +7,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(OrdersWidgetPlugin.class);
+        registerPlugin(WakeAlarmPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

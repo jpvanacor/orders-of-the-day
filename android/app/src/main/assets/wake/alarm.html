@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wake up</title>
+<style>
+@font-face{font-family:"Barlow Condensed";font-weight:800;src:url(fonts/barlow-condensed-latin-800-normal.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Hyperlegible";font-weight:400;src:url(fonts/atkinson-hyperlegible-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Hyperlegible";font-weight:700;src:url(fonts/atkinson-hyperlegible-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Spline Sans Mono";font-weight:600;src:url(fonts/spline-sans-mono-latin-600-normal.woff2) format("woff2")}
+:root{
+  --bg:#0E1317;--surface:#161D23;--ink:#E6ECF0;--muted:#94A2AD;--line:#27323B;
+  --accent:#57CCD5;--bad:#FF8597;--good:#6FD17B;
+  --font-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --font-body:"Atkinson Hyperlegible",system-ui,sans-serif;
+  --font-mono:"Spline Sans Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);-webkit-text-size-adjust:100%}
+body{display:flex;flex-direction:column;min-height:100%;padding:max(18px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));font:400 1rem/1.4 var(--font-body);-webkit-tap-highlight-color:transparent}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.kicker{font:700 .7rem/1 var(--font-body);letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.clock{font:600 2.6rem/1 var(--font-mono);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+h1{margin:.55rem 0 .2rem;font:800 3.1rem/.92 var(--font-display);text-transform:uppercase;letter-spacing:.01em}
+.sub{margin:0;color:var(--muted);font-size:1.02rem}
+.view{position:relative;flex:1 1 auto;min-height:15rem;margin:1rem 0 .75rem;border-radius:10px;overflow:hidden;background:#05080A;border:1px solid var(--line)}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.frame{position:absolute;left:50%;top:50%;width:min(62%,15rem);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:14px;box-shadow:0 0 0 999px rgba(5,8,10,.38)}
+.frame i{position:absolute;width:26%;height:26%;border:4px solid var(--accent)}
+.frame i:nth-child(1){left:-2px;top:-2px;border-right:0;border-bottom:0;border-radius:14px 0 0 0}
+.frame i:nth-child(2){right:-2px;top:-2px;border-left:0;border-bottom:0;border-radius:0 14px 0 0}
+.frame i:nth-child(3){left:-2px;bottom:-2px;border-right:0;border-top:0;border-radius:0 0 0 14px}
+.frame i:nth-child(4){right:-2px;bottom:-2px;border-left:0;border-top:0;border-radius:0 0 14px 0}
+.status{position:absolute;left:0;right:0;bottom:0;padding:.7rem .9rem;background:linear-gradient(transparent,rgba(5,8,10,.85));font:700 .95rem/1.3 var(--font-body);text-align:center}
+.status.bad{color:var(--bad)}
+.light{position:absolute;top:.6rem;right:.6rem;appearance:none;border:1px solid rgba(230,236,240,.4);background:rgba(5,8,10,.55);color:var(--ink);border-radius:999px;padding:.45rem .8rem;font:700 .72rem/1 var(--font-body);letter-spacing:.1em;text-transform:uppercase}
+.light[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.cant{appearance:none;align-self:center;border:0;background:none;color:var(--muted);font:700 .8rem/1 var(--font-body);letter-spacing:.08em;text-transform:uppercase;text-decoration:underline;text-underline-offset:.25em;padding:.7rem}
+.escape{margin-top:.25rem;padding:.9rem;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.escape p{margin:0 0 .55rem;color:var(--muted);font-size:.92rem}
+.sentence{display:block;margin-bottom:.7rem;font:600 1rem/1.4 var(--font-mono);color:var(--ink)}
+.escape input{width:100%;font:600 1rem/1.3 var(--font-mono);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.7rem .75rem}
+.escape input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.stop{width:100%;margin-top:.6rem;appearance:none;border:0;border-radius:6px;padding:.9rem;background:var(--ink);color:var(--bg);font:700 .85rem/1 var(--font-body);letter-spacing:.1em;text-transform:uppercase}
+.stop:disabled{background:var(--line);color:var(--muted)}
+.done{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;background:var(--bg);text-align:center;padding:24px}
+.done b{font:800 3.4rem/.95 var(--font-display);text-transform:uppercase;color:var(--good)}
+.done span{color:var(--muted);font-size:1.05rem}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="top"><span class="kicker" id="kicker">Wake alarm</span><span class="clock" id="clock">06:45</span></div>
+<h1 id="title">Shower first.</h1>
+<p class="sub">Go to the bathroom and point the camera at the code by the shower. That stops the alarm.</p>
+<div class="view" id="view">
+  <video id="video" playsinline muted autoplay></video>
+  <div class="frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <button type="button" class="light" id="light" aria-pressed="false" hidden>Light</button>
+  <div class="status" id="status" role="status">Starting the camera</div>
+</div>
+<button type="button" class="cant" id="cant">Can't scan the code?</button>
+<div class="escape" id="escape" hidden>
+  <p>Away from home, or the code won't read? Type this sentence exactly:</p>
+  <span class="sentence" id="sentence"></span>
+  <input id="typed" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" aria-label="Type the sentence">
+  <button type="button" class="stop" id="stop" disabled>Stop the alarm</button>
+</div>
+<div class="done" id="done" hidden><b>Good.</b><span id="doneText">Into the shower.</span></div>
+<script src="jsQR.js"></script>
+<script>
+(function(){
+  "use strict";
+  var A=window.Alarm||null,info={};
+  try{info=JSON.parse(A?A.info():"{}")||{};}catch(e){info={};}
+  var SENTENCE=info.sentence||"I am awake and I am going to shower now";
+  function $(id){return document.getElementById(id);}
+  function pad(n){return (n<10?"0":"")+n;}
+  function norm(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();}
+  if(info.test){$("kicker").textContent="Test alarm";}
+  $("sentence").textContent=SENTENCE;
+  function clock(){var d=new Date();$("clock").textContent=pad(d.getHours())+":"+pad(d.getMinutes());}
+  clock();setInterval(clock,1000);
+
+  var video=$("video"),canvas=document.createElement("canvas"),ctx=canvas.getContext("2d",{willReadFrequently:true});
+  var stream=null,timer=null,finished=false,badUntil=0,starting=false;
+  function status(text,bad){var s=$("status");s.textContent=text;s.className="status"+(bad?" bad":"");}
+  function startCamera(){
+    if(stream||starting||finished||document.hidden) return;
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){status("No camera available. Use the sentence below.",true);showEscape();return;}
+    starting=true;
+    navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}}}).then(function(s){
+      starting=false;
+      if(finished||document.hidden){s.getTracks().forEach(function(t){t.stop();});return;}
+      stream=s;video.srcObject=s;
+      var p=video.play();if(p&&p.catch) p.catch(function(){});
+      status("Looking for the code");
+      try{var track=s.getVideoTracks()[0],caps=track.getCapabilities?track.getCapabilities():{};if(caps&&caps.torch) $("light").hidden=false;}catch(e){}
+      timer=setInterval(scan,200);
+    },function(){
+      starting=false;
+      status("The camera is blocked. Use the sentence below, then allow the camera for Orders.",true);
+      showEscape();
+    });
+  }
+  function stopCamera(){
+    if(timer){clearInterval(timer);timer=null;}
+    if(stream){stream.getTracks().forEach(function(t){try{t.stop();}catch(e){}});stream=null;}
+    video.srcObject=null;$("light").setAttribute("aria-pressed","false");
+  }
+  function scan(){
+    if(finished||!video.videoWidth||typeof jsQR!=="function") return;
+    var w=Math.min(720,video.videoWidth),h=Math.round(video.videoHeight*w/video.videoWidth);
+    if(canvas.width!==w) canvas.width=w;
+    if(canvas.height!==h) canvas.height=h;
+    ctx.drawImage(video,0,0,w,h);
+    var img=ctx.getImageData(0,0,w,h),code=jsQR(img.data,w,h,{inversionAttempts:"attemptBoth"});
+    if(!code||!code.data) {if(Date.now()>badUntil) status("Looking for the code");return;}
+    var ok=false;
+    try{ok=A?!!A.check(code.data):false;}catch(e){ok=false;}
+    if(ok){finish("Into the shower.");return;}
+    badUntil=Date.now()+2500;
+    status("That's not your code. Scan the one by the shower.",true);
+  }
+  function finish(text){
+    finished=true;stopCamera();
+    $("doneText").textContent=text;
+    $("done").hidden=false;
+  }
+  function showEscape(){$("escape").hidden=false;$("cant").hidden=true;}
+  $("cant").addEventListener("click",function(){showEscape();$("typed").focus();});
+  $("typed").addEventListener("input",function(){$("stop").disabled=norm(this.value)!==norm(SENTENCE);});
+  $("stop").addEventListener("click",function(){
+    var ok=false;
+    try{ok=A?!!A.escape($("typed").value):false;}catch(e){ok=false;}
+    if(ok) finish("Now go shower.");
+  });
+  $("light").addEventListener("click",function(){
+    var b=this,on=b.getAttribute("aria-pressed")!=="true";
+    if(!stream) return;
+    var track=stream.getVideoTracks()[0];
+    track.applyConstraints({advanced:[{torch:on}]}).then(function(){b.setAttribute("aria-pressed",String(on));},function(){b.hidden=true;});
+  });
+  document.addEventListener("visibilitychange",function(){if(document.hidden) stopCamera();else startCamera();});
+  window.__wake={finish:finish,status:status};
+  startCamera();
+  setTimeout(function(){if(!stream&&!finished){status("The camera isn't starting. Use the sentence below.",true);showEscape();}},7000);
+})();
+</script>
+</body>
+</html>

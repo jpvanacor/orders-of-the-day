@@ -227,6 +227,7 @@ details .checks{margin-top:.3rem}
 .sec>h2{margin:0 0 .75rem;font:800 1.35rem/1 var(--font-display);text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
 .sub-h{font:500 .85rem/1 var(--font-mono);color:var(--muted);text-transform:none;letter-spacing:0}
 .hint{margin:.65rem 0 0;color:var(--muted);font-size:.92rem;max-width:62ch}
+.hint a{color:var(--ink);text-underline-offset:.2em}
 .toggles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.35rem}
 .dtog{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:.75rem 0;font:700 .8rem/1 var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);cursor:pointer;min-width:0}
 .dtog[aria-pressed="true"]{background:var(--cat-commute);border-color:var(--cat-commute);color:var(--on-cat)}
@@ -375,6 +376,13 @@ details .checks{margin-top:.3rem}
         <h2>Office days</h2>
         <div class="toggles" id="officeDays"></div>
         <p class="hint" id="officeHint"></p>
+      </section>
+      <section class="sec" id="alarmSec" hidden>
+        <h2>Wake alarm</h2>
+        <div class="switchrow"><span>Rings at your wake time: 06:45 on weekdays, 07:30 on weekends and days off, never on sick days. It only stops when you scan the code by the shower.</span><button type="button" class="switch" id="alarmTog" aria-pressed="false">Off</button></div>
+        <p class="hint" id="alarmStatus">Checking the alarm.</p>
+        <div class="btnrow"><button type="button" class="switch" id="alarmCam" hidden>Allow the camera</button><button type="button" class="switch" id="alarmFull" hidden>Allow full screen</button><button type="button" class="switch" id="alarmTest">Test in 10 s</button></div>
+        <p class="hint">The code to print: <a href="https://jpvanacor.github.io/orders-of-the-day/shower-code.pdf" target="_blank" rel="noopener">shower-code.pdf</a>. Tape it next to the shower, at eye level, in a plastic sleeve. Can't scan it? The alarm screen also takes a typed sentence.</p>
       </section>
       <section class="sec" id="notifSec" hidden>
         <h2>Notifications</h2>
@@ -570,7 +578,8 @@ function dayBlocks(c){
     add("bed",w[1],w[2],"mind","Read in bed","Paper book until lights out. This month: "+c.book+".");
     add("sleep",w[2],w[2],"sleep","Sleep","Lights out. Wake at "+c.nextWake+".");
   }
-  var wakeBase=[["feet","Feet on the floor, no snooze"],["water","Drink water"],["bed","Make the bed"]];
+  var wakeShower=[["scan","Scan the code by the shower"],["shower","Shower"],["water","Drink water"],["bed","Make the bed"]];
+  var breakfast=[["eat","Breakfast"],["dishes","Dishes right after"]];
   var hard=[["phone","Phone in the drawer"],["hard","Start with the task that matters most"]];
   var basic=[["counters","Counters"],["trash","Trash out"]];
   var defrostLunch=["defrost","11:50","12:00","meal","Defrost lunch","Put lunch in to defrost, then keep working until 12:00.",[["start","Put lunch in to defrost"]]];
@@ -600,13 +609,14 @@ function dayBlocks(c){
   /* Weekday holiday or day off: a weekend morning, no work. */
   if(c.weekday&&c.off){
     var trainH=TRAIN_DAYS.indexOf(c.dow)>=0;
-    add("wake","07:30","08:00","routine","Wake up",c.holiday?"Holiday: "+c.holiday+". Feet on the floor, then breakfast.":"Day off. Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
-    if(c.urgent) add("uwork1","08:00","11:00","work","Work, 3 hours","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study","08:00","11:00","study",studyTitle,"Phone in the drawer. Anki first.",studyItems(true,true).concat([["breaks","10-minute break each hour"]]));
+    add("wake","07:30","07:50","routine","Wake up and shower",(c.holiday?"Holiday: "+c.holiday+". ":"Day off. ")+"Code by the shower, then straight in.",wakeShower);
+    add("breakfast","07:50","08:05","meal","Breakfast","Simple breakfast. Dishes right after.",breakfast);
+    if(c.urgent) add("uwork1","08:05","11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
+    else add("study","08:05","11:00","study",studyTitle,"Phone in the drawer. Anki first.",studyItems(true,true).concat([["breaks","10-minute break each hour"]]));
     if(trainH) add("train","11:00","12:00","body","Train: "+TRAIN_NAME[c.dow],"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+TRAIN_NAME[c.dow]]]);
     else add("walk","11:00","12:00","body","Walk outside","One hour outdoors. If it rains, 30 minutes of stretching at home.");
-    add("lunch","12:00","13:00","meal","Lunch",trainH?"Start the defrost and shower while it runs.":"Start the defrost, then wash up while it runs.",
-      (trainH?[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"]]:[["defrost","Put lunch in to defrost"]]).concat([["dishes","Dishes right after"],["teeth","Brush your teeth"]]));
+    add("lunch","12:00","13:00","meal","Lunch",trainH?"Start the defrost and rinse off while it runs.":"Start the defrost, then wash up while it runs.",
+      (trainH?[["defrost","Put lunch in to defrost"],["rinse","Quick rinse while it runs"]]:[["defrost","Put lunch in to defrost"]]).concat([["dishes","Dishes right after"],["teeth","Brush your teeth"]]));
     if(c.urgent){
       add("uwork2","13:00","16:00","work","Work, 3 hours","Stop at 16:00.",[["breaks","10-minute break each hour"],["left","Write down what's left"]]);
       add("rest","16:00","18:00","people","Rest","Away from work. People, a book or outside.");
@@ -619,16 +629,16 @@ function dayBlocks(c){
   }
 
   if(c.weekday&&c.urgent){
-    var wedU=c.dow===3,wakeU=wakeBase.slice();
+    var wedU=c.dow===3,wakeU=wakeShower.slice();
     if(wedU) wakeU.push(["wash","Start the washing machine"]);
-    add("wake","06:45","07:00","routine","Wake up","Feet on the floor. No snooze.",wakeU);
-    add("breakfast","07:00","07:15","meal","Breakfast","Simple breakfast. Dishes right after.",[["eat","Breakfast"],["dishes","Dishes right after"]]);
+    add("wake","06:45","07:05","routine","Wake up and shower","Code by the shower, then straight in. No snooze.",wakeU);
+    add("breakfast","07:05","07:20","meal","Breakfast","Simple breakfast. Dishes right after.",breakfast);
     var lunchU=[["lunch","Lunch away from the desk"],["dishes","Dishes right after"],["teeth","Brush your teeth"],["walk","5-minute walk (rain: stretch)"]];
     if(c.office){
-      add("uwork1","07:15","08:30","work","Work: hardest task first","From home, before you leave.",hard);
-      var shU=[["shower","Shower"]];
-      if(wedU) shU.push(["hang","Hang the laundry"]);
-      add("shower","08:30","09:00","routine","Shower and get ready",wedU?"Shower, then hang the laundry.":"Leave at 09:00.",shU);
+      add("uwork1","07:20","08:40","work","Work: hardest task first","From home, before you leave.",hard);
+      var rdU=[["dress","Get dressed"],["bag","Bag ready"]];
+      if(wedU) rdU.push(["hang","Hang the laundry"]);
+      add("ready","08:40","09:00","routine","Get ready",wedU?"Dress, hang the laundry, leave at 09:00.":"Dress and leave at 09:00.",rdU);
       add("commute","09:00","10:00","commute","Commute","Read today's top 3, then rest your eyes.",[["top3","Read today's top 3"]]);
       add("work1","10:00","11:50","work","Work","At the office.");
       add.apply(null,defrostLunch);
@@ -639,10 +649,10 @@ function dayBlocks(c){
       add("reset","20:40","21:00","home","House reset","Only the basics in urgent mode.",basic);
       tail("21:00","Rest","Time with people or a book. No work, no screens.");
     } else {
-      add("uwork1","07:15","09:15","work","Work: hardest task first","Before messages and email.",hard);
-      var mv=[["circuit","15-minute bodyweight circuit"],["shower","Shower"]];
+      add("uwork1","07:20","09:15","work","Work: hardest task first","Before messages and email.",hard);
+      var mv=[["circuit","15-minute bodyweight circuit"],["rinse","Quick rinse"]];
       if(wedU) mv.push(["hang","Hang the laundry"]);
-      add("move","09:15","09:45","body","Workout and shower","15-minute bodyweight circuit at home, then shower.",mv);
+      add("move","09:15","09:45","body","Workout","15-minute bodyweight circuit at home, then a quick rinse.",mv);
       add("work1","09:45","11:50","work","Work","From home.");
       add.apply(null,defrostLunch);
       add("lunch","12:00","12:45","meal","Lunch","Away from the desk. A 5-minute walk if it's dry.",lunchU);
@@ -655,15 +665,19 @@ function dayBlocks(c){
     }
   } else if(c.weekday){
     var train=TRAIN_NAME[c.dow],zone=ZONE[c.dow],wed=c.dow===3;
-    var wake=wakeBase.slice();
+    var wake=wakeShower.slice();
     if(wed) wake.push(["wash","Start the washing machine"]);
-    add("wake","06:45","07:00","routine","Wake up","Feet on the floor. No snooze.",wake);
-    add("breakfast","07:00","07:15","meal","Breakfast","Simple breakfast. Dishes right after.",[["eat","Breakfast"],["dishes","Dishes right after"]]);
-    if(train) add("early","07:15","08:15","body","Train: "+train,"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+train]]);
-    else add("early","07:15","08:15","study",studyTitle,"Phone in the drawer. Anki first.",studyItems(true,false));
-    var sh=[["shower","Shower"]];
-    if(wed) sh.push(["hang","Hang the laundry"]);
-    add("shower","08:15","08:30","routine","Shower",wed?"Shower, then hang the laundry.":"Then straight to study.",sh);
+    add("wake","06:45","07:05","routine","Wake up and shower","Code by the shower, then straight in. No snooze.",wake);
+    add("breakfast","07:05","07:20","meal","Breakfast","Simple breakfast. Dishes right after.",breakfast);
+    if(train){
+      add("early","07:20","08:20","body","Train: "+train,"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+train]]);
+      var rn=[["rinse","Quick rinse"],["clothes","Fresh clothes"]];
+      if(wed) rn.push(["hang","Hang the laundry"]);
+      add("rinse","08:20","08:30","routine","Rinse and change",wed?"Quick rinse, fresh clothes, then hang the laundry.":"Quick rinse, fresh clothes. Then straight to study.",rn);
+    } else {
+      add("early","07:20","08:20","study",studyTitle,"Phone in the drawer. Anki first.",studyItems(true,false));
+      add("pause","08:20","08:30","routine","Short break","Stand up, water, then back to the same subject.",[["water","Drink water"],["stretch","Stand up and stretch"]]);
+    }
     var reset=[["counters","Counters"],["trash","Trash out"],["zone",zone]];
     if(c.office){
       add("study","08:30","09:00","study",studyTitle,"Phone in the drawer.",studyItems(false,false));
@@ -697,12 +711,13 @@ function dayBlocks(c){
       }
     }
   } else if(c.dow===6){
-    add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
-    if(c.urgent) add("uwork1","08:00","11:00","work","Work, 3 hours","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study","08:00","11:00","study","Study: Legislação Especial + Administrativo","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],
+    add("wake","07:30","07:50","routine","Wake up and shower","Code by the shower, then straight in.",wakeShower);
+    add("breakfast","07:50","08:05","meal","Breakfast","Simple breakfast. Dishes right after.",breakfast);
+    if(c.urgent) add("uwork1","08:05","11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
+    else add("study","08:05","11:00","study","Study: Legislação Especial + Administrativo","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],
       ["esp","Legislação Especial: "+SPECIAL_SETS[mod(c.week,SPECIAL_SETS.length)]],["adm","Administrativo: "+ADMIN_LAWS[mod(c.week,ADMIN_LAWS.length)]],["breaks","10-minute break each hour"]]);
     add("train","11:00","12:00","body","Train: skills","Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Skills session"]]);
-    add("lunch","12:00","13:00","meal","Lunch","Start the defrost and shower while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
+    add("lunch","12:00","13:00","meal","Lunch","Start the defrost and rinse off while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["rinse","Quick rinse while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     var err=[["list","Buy everything on Friday's list"]];
     if(c.nth===1) err.push(["restock","Restock cleaning and hygiene supplies","Monthly"]);
     if(c.nth===3) err.push(["haircut","Haircut","Monthly"]);
@@ -720,9 +735,10 @@ function dayBlocks(c){
     }
     tail("18:00","Time with people",c.urgent?"No work tonight.":"No gaming, no series.",c.lastOfMonth?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
   } else {
-    add("wake","07:30","08:00","routine","Wake up","Feet on the floor, then breakfast.",wakeBase.concat([["eat","Breakfast"],["dishes","Dishes right after"]]));
-    if(c.urgent) add("uwork1","08:00","11:00","work","Work, 3 hours","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study","08:00","11:00","study","Redação","One essay, nothing else.",[["theme","Pick a theme and plan it"],["write","Write the essay"],["fix","Correct it with the grid"],["rewrite","Rewrite the weakest paragraph"]]);
+    add("wake","07:30","07:50","routine","Wake up and shower","Code by the shower, then straight in.",wakeShower);
+    add("breakfast","07:50","08:05","meal","Breakfast","Simple breakfast. Dishes right after.",breakfast);
+    if(c.urgent) add("uwork1","08:05","11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
+    else add("study","08:05","11:00","study","Redação","One essay, nothing else.",[["theme","Pick a theme and plan it"],["write","Write the essay"],["fix","Correct it with the grid"],["rewrite","Rewrite the weakest paragraph"]]);
     add("walk","11:00","12:00","body","Walk outside","One hour outdoors. If it rains, 30 minutes of stretching at home.");
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost, then wash up while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     if(c.urgent){
@@ -821,7 +837,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=10;
+var APP_VERSION=11;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -1746,7 +1762,7 @@ function reschedule(force){
     }).then(function(){notif.sig=sig;notif.last=Date.now();});
   }).catch(function(e){notif.error=errText(e);}).then(function(){notif.busy=false;renderNotif();if(notif.again){notif.again=false;reschedule(true);}});
 }
-function scheduleSoon(force){clearTimeout(notif.timer);notif.timer=setTimeout(function(){pushWidget();if(LN) reschedule(force);},700);}
+function scheduleSoon(force){clearTimeout(notif.timer);notif.timer=setTimeout(function(){pushWidget();pushWake(false);if(LN) reschedule(force);},700);}
 
 /* Android home screen widget: the app hands it the next days of blocks. */
 var OW=NATIVE?((CAP.Plugins&&CAP.Plugins.OrdersWidget)||(typeof CAP.registerPlugin==="function"?CAP.registerPlugin("OrdersWidget"):null)):null;
@@ -1800,6 +1816,69 @@ if(NATIVE){
   });
 }
 
+/* Wake alarm (Android app): rings at the wake block, and only the code by the shower stops it. */
+var WA=NATIVE?((CAP.Plugins&&CAP.Plugins.WakeAlarm)||(typeof CAP.registerPlugin==="function"?CAP.registerPlugin("WakeAlarm"):null)):null;
+var wake={status:null,sig:"",error:""};
+function wakeTimes(now){
+  var start=startOfDay(now),out=[];
+  for(var d=0;d<NOTIF_DAYS;d++){
+    timeline(addDays(start,d),settings).forEach(function(b){if(b.key==="wake"&&b.startAt>now) out.push(b.startAt.getTime());});
+  }
+  return out;
+}
+function pushWake(force){
+  if(!WA) return;
+  var times=settings.alarm?wakeTimes(new Date()):[],sig=JSON.stringify([!!settings.alarm,times]);
+  if(!force&&sig===wake.sig) return;
+  wake.sig=sig;
+  try{
+    WA.setSchedule({enabled:!!settings.alarm,times:times}).then(function(s){wake.status=s;wake.error="";renderWake();},function(e){wake.sig="";wake.error=errText(e);renderWake();});
+  }catch(e){wake.sig="";wake.error=errText(e);renderWake();}
+}
+function refreshWake(){
+  if(!WA) return;
+  try{WA.status().then(function(s){wake.status=s;renderWake();},function(){});}catch(e){}
+}
+function renderWake(){
+  if(!WA) return;
+  var s=wake.status||{},on=!!settings.alarm,txt,warn=[];
+  $("alarmTog").setAttribute("aria-pressed",String(on));
+  $("alarmTog").textContent=on?"On":"Off";
+  $("alarmCam").hidden=!(on&&s.camera===false);
+  $("alarmFull").hidden=!(on&&s.fullScreen===false);
+  if(on&&s.camera===false) warn.push("allow the camera");
+  if(on&&s.fullScreen===false) warn.push("allow full screen, or the alarm screen won't open by itself");
+  if(on&&s.notifications===false) warn.push("turn notifications on for Orders");
+  if(wake.error) txt="Could not set the alarm: "+wake.error+".";
+  else if(!on) txt="Off. Print the code, tape it next to the shower, turn this on and run a test. Keep your usual alarm for the first mornings.";
+  else if(s.next){var n=new Date(s.next);txt="Next: "+DOW_FULL[n.getDay()]+" "+hhmm(n)+".";}
+  else if(wake.status) txt="On, but there's no wake time in the next "+NOTIF_DAYS+" days.";
+  else txt="Setting the alarm.";
+  if(warn.length) txt+=" Still to do: "+warn.join("; ")+".";
+  $("alarmStatus").textContent=txt;
+}
+if(WA){
+  $("alarmTog").addEventListener("click",function(){
+    settings.alarm=!settings.alarm;save(S_KEY,settings);sfx("toggle");
+    function go(){pushWake(true);renderWake();}
+    renderWake();
+    if(settings.alarm){try{WA.requestCamera().then(function(s){wake.status=s;go();},go);}catch(e){go();}}
+    else go();
+  });
+  $("alarmCam").addEventListener("click",function(){
+    try{WA.requestCamera().then(function(s){wake.status=s;renderWake();if(s&&s.camera===false) WA.openSettings({what:"app"});},function(){WA.openSettings({what:"app"});});}catch(e){}
+  });
+  $("alarmFull").addEventListener("click",function(){try{WA.openSettings({what:"fullscreen"});}catch(e){}});
+  $("alarmTest").addEventListener("click",function(){
+    var b=this;
+    try{
+      WA.test().then(function(s){wake.status=s;renderWake();sfx("toggle");b.textContent="Rings in 10 s";setTimeout(function(){b.textContent="Test in 10 s";},12000);},
+        function(e){wake.error=errText(e);renderWake();});
+    }catch(e){}
+  });
+  document.addEventListener("visibilitychange",function(){if(!document.hidden){refreshWake();pushWake(false);}});
+}
+
 var deferredInstall=null;
 function isStandalone(){try{return window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;}catch(e){return false;}}
 function renderInstall(){var inst=isStandalone();$("installedNote").hidden=!inst;$("installHow").hidden=inst;$("installBtn").hidden=!deferredInstall;}
@@ -1817,6 +1896,8 @@ renderInstall();
 $("installSec").hidden=NATIVE;
 $("apkSec").hidden=NATIVE;
 $("notifSec").hidden=!NATIVE;
+$("alarmSec").hidden=!WA;
+if(WA){renderWake();pushWake(true);}
 $("appVersion").textContent="Version "+APP_VERSION+(NATIVE?" · Android app":" · web app");
 if(!NATIVE&&"serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
 if(NATIVE&&LN){
