@@ -312,6 +312,12 @@ details .checks{margin-top:.3rem}
       </article>
       <p class="next" id="nextRow" style="--c:var(--cat-meal)"><span class="k">Next</span><span class="dot" aria-hidden="true"></span><time id="nextTime">12:00</time><b id="nextTitle">Lunch and a walk</b></p>
       <div class="trackers" id="trackers">
+        <div class="trk" id="focusRow" role="group" aria-label="Focus sessions" hidden style="--c:var(--cat-study)">
+          <span class="trk-k"><i aria-hidden="true"></i><span id="focusLabel">Focus</span></span>
+          <span class="trk-mid"><span class="trk-val" id="focusVal"></span><span class="trk-sub" id="focusSub"></span></span>
+          <span class="trk-btns"><button type="button" class="sbtn" id="focusStop" hidden>Stop</button><button type="button" class="sbtn" id="focusGo">Start</button></span>
+          <span class="trk-line" aria-hidden="true"><span id="focusBar"></span></span>
+        </div>
         <div class="trk" id="workTimer" role="group" aria-label="Work timer" hidden style="--c:var(--cat-work)">
           <span class="trk-k"><i aria-hidden="true"></i>Work</span>
           <span class="trk-mid">
@@ -815,7 +821,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=9;
+var APP_VERSION=10;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -1332,6 +1338,99 @@ function renderTimer(now){
   }
 }
 
+/* Focus sessions: the rest of a long work or study block, split into a few equal sessions with short breaks.
+   Nothing starts by itself. You start each session, and the time left is spread again over the sessions left. */
+var F_KEY="ood.focus.v1",focus=load(F_KEY,null),focusArm=0,FOCUS={target:55,brk:5,min:25};
+function saveFocus(){save(F_KEY,focus);}
+function splitPlan(ms,count){
+  var B=FOCUS.brk*60000,n=count||Math.max(1,Math.round((ms+B)/((FOCUS.target+FOCUS.brk)*60000))),f=ms;
+  while(true){f=(ms-(n-1)*B)/n;if(n<=1||f>=FOCUS.min*60000) break;n--;}
+  return {n:n,f:f};
+}
+/* The chunk ends with the block, or with the work timer when it ends first (or on the day's last work block). */
+function focusEnd(r,nowMs){
+  var end=r.block.endAt.getTime();
+  if(r.block.cat==="work"){
+    var ts=timerState(nowMs),last=null;
+    if(ts&&ts.running&&ts.left>0){
+      timeline(new Date(nowMs),settings).forEach(function(b){if(b.cat==="work") last=b;});
+      if(ts.endsAt<end||(last&&last.key===r.block.key)) end=ts.endsAt;
+    }
+  }
+  return end;
+}
+/* Offered only on big chunks: when the time left makes at least two sessions. */
+function focusOffer(r,nowMs){
+  if(!r||(r.block.cat!=="work"&&r.block.cat!=="study")) return null;
+  var end=focusEnd(r,nowMs),sp=splitPlan(end-nowMs);
+  return sp.n>=2?{end:end,n:sp.n,f:sp.f,cat:r.block.cat}:null;
+}
+function focusAdvance(nowMs){
+  if(!focus) return null;
+  var ev=null,at=0;
+  if(focus.phase==="focus"&&nowMs>=focus.phaseEnd){
+    at=focus.phaseEnd;focus.done++;
+    if(focus.done>=focus.n||focus.phaseEnd>=focus.end-60000){focus=null;saveFocus();return {ev:"finished",late:nowMs-at>5000};}
+    focus.phase="break";focus.phaseStart=focus.phaseEnd;focus.phaseEnd=Math.min(focus.end,focus.phaseStart+FOCUS.brk*60000);ev="break";
+  }
+  if(focus.phase==="break"&&nowMs>=focus.phaseEnd){at=focus.phaseEnd;focus.phase="ready";ev="ready";}
+  if(nowMs>=focus.end){at=focus.end;focus=null;ev="ended";}
+  if(!ev) return null;
+  saveFocus();
+  return {ev:ev,late:nowMs-at>5000};
+}
+function renderFocus(now,r){
+  var row=$("focusRow"),nowMs=now.getTime();
+  if(focus&&(focus.day!==ymd(now)||nowMs>=focus.end)){focus=null;saveFocus();}
+  var offer=focus?null:focusOffer(r,nowMs);
+  row.hidden=!focus&&!offer;
+  if(row.hidden) return;
+  var label="Focus",val,sub,c="var(--cat-"+(focus?focus.cat:offer.cat)+")",cls="",go=true,p=0;
+  if(!focus){
+    val=offer.n+" × "+Math.round(offer.f/60000)+" min";
+    sub=FOCUS.brk+"-min breaks, until "+hhmm(new Date(offer.end));
+  } else if(focus.phase==="focus"){
+    val=fmtClock(focus.phaseEnd-nowMs);
+    sub=(focus.done+1)+" of "+focus.n+", "+(focus.done+1>=focus.n?"ends ":"break at ")+hhmm(new Date(focus.phaseEnd));
+    cls="is-running";go=false;p=(nowMs-focus.phaseStart)/(focus.phaseEnd-focus.phaseStart);
+  } else if(focus.phase==="break"){
+    label="Break";val=fmtClock(focus.phaseEnd-nowMs);sub="get up and walk";c="var(--cat-home)";cls="is-due";
+    p=(nowMs-focus.phaseStart)/(focus.phaseEnd-focus.phaseStart);
+  } else {
+    var sp=splitPlan(focus.end-nowMs,focus.n-focus.done);
+    val=Math.round(sp.f/60000)+" min";sub="break over, "+(focus.done+1)+" of "+(focus.done+sp.n);c="var(--cat-home)";cls="is-due is-running";
+  }
+  row.className="trk"+(cls?" "+cls:"");
+  row.style.setProperty("--c",c);
+  $("focusLabel").textContent=label;
+  $("focusVal").textContent=val;
+  $("focusSub").textContent=sub;
+  $("focusGo").hidden=!go;
+  $("focusStop").hidden=!focus;
+  $("focusStop").textContent=Date.now()<focusArm?"Sure?":"Stop";
+  $("focusBar").style.width=(Math.max(0,Math.min(1,p))*100).toFixed(2)+"%";
+}
+function startFocus(){
+  var now=new Date(),nowMs=now.getTime(),r=findNow(now,settings);
+  if(!focus){
+    var offer=focusOffer(r,nowMs);
+    if(!offer) return;
+    focus={day:ymd(now),cat:offer.cat,end:offer.end,n:offer.n,done:0,phase:"focus",phaseStart:nowMs,phaseEnd:nowMs+offer.f};
+  } else {
+    if(focus.phase==="focus") return;
+    var sp=splitPlan(focus.end-nowMs,focus.n-focus.done);
+    focus.n=focus.done+sp.n;focus.phase="focus";focus.phaseStart=nowMs;focus.phaseEnd=nowMs+sp.f;
+  }
+  focusArm=0;saveFocus();sfx("toggle");renderFocus(now,r);scheduleSoon(true);
+}
+function stopFocus(){
+  if(!focus) return;
+  var n=Date.now(),now=new Date();
+  if(n>focusArm){focusArm=n+3000;sfx("tap");renderFocus(now,findNow(now,settings));return;}
+  focusArm=0;focus=null;saveFocus();sfx("uncheck");
+  renderFocus(now,findNow(now,settings));scheduleSoon(true);
+}
+
 /* Water: a cup about every hour, logged with + Cup. */
 var W_KEY="ood.water.v1",waterLog=load(W_KEY,null)||{},WATER={every:60,cup:200,goal:10,endH:20};
 (function(){var cut=ymd(addDays(new Date(),-21));Object.keys(waterLog).forEach(function(k){if(k<cut) delete waterLog[k];});})();
@@ -1436,6 +1535,8 @@ function renderAll(now,animate){
   renderDayBar(now);
   renderTimer(now);
   renderWater(now,false);
+  focusAdvance(now.getTime());
+  renderFocus(now,r);
   state.lastKey=r?r.block.day+"/"+r.block.key:"";
   state.lastDay=ymd(now);
 }
@@ -1472,6 +1573,16 @@ function tick(){
     if(r) tickNow(now,r);
     renderTimer(now);
     if(now.getSeconds()===0) renderWater(now,false);
+    var fa=focusAdvance(now.getTime());
+    renderFocus(now,r);
+    if(fa){
+      if(!fa.late&&!document.hidden){
+        if(fa.ev==="break"){sfx("block");var fr=$("focusRow");if(!fr.hidden) burst(center(fr).x,center(fr).y,["var(--cat-home)"],10,{power:60,gravity:20,size:6});}
+        else if(fa.ev==="ready") sfx("tick");
+        else if(fa.ev==="finished") sfx("done");
+      }
+      scheduleSoon(true);
+    }
   }
 }
 
@@ -1504,6 +1615,8 @@ VIEWS.forEach(function(v){$("tab-"+v).addEventListener("click",function(){if(sta
 $("dtHome").addEventListener("click",function(){setToday("home");});
 $("wtStart").addEventListener("click",startTimer);
 $("waterAdd").addEventListener("click",addCup);
+$("focusGo").addEventListener("click",startFocus);
+$("focusStop").addEventListener("click",stopFocus);
 $("waterUndo").addEventListener("click",undoCup);
 $("wtPause").addEventListener("click",pauseOrResume);
 $("wtStop").addEventListener("click",stopTimer);
@@ -1556,6 +1669,15 @@ function notifPlan(now){
     var tw=new Date(ts.endsAt-5*60000);
     if(settings.warn&&tw>now) out.push({id:id++,kind:"warn",at:tw,title:"In 5 min: work time done",body:"Start wrapping up."});
   }
+  if(focus){
+    var nowMs=now.getTime(),fb=FOCUS.brk*60000;
+    if(focus.phase==="focus"&&focus.done+1<focus.n&&focus.phaseEnd>nowMs){
+      out.push({id:id++,kind:"block",at:new Date(focus.phaseEnd),title:"Break: stand up and walk around",body:FOCUS.brk+" minutes. Then start session "+(focus.done+2)+" of "+focus.n+"."});
+      out.push({id:id++,kind:"warn",at:new Date(Math.min(focus.end,focus.phaseEnd+fb)),title:"Break over",body:"Sit down and start session "+(focus.done+2)+" in Orders."});
+    } else if(focus.phase==="break"&&focus.phaseEnd>nowMs){
+      out.push({id:id++,kind:"warn",at:new Date(focus.phaseEnd),title:"Break over",body:"Sit down and start session "+(focus.done+1)+" in Orders."});
+    }
+  }
   if(settings.water){
     for(var wd=0;wd<NOTIF_DAYS;wd++){
       waterTimes(addDays(start,wd),now).forEach(function(at){
@@ -1571,7 +1693,7 @@ function notifPlan(now){
   out.sort(function(a,b){return a.at-b.at;});
   return out;
 }
-function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify,settings.urgent||null,settings.dayMarks,settings.warn,settings.water,waterLog[ymd(new Date())]||[],timer?[timer.target,timer.startedAt,timer.pausedAt,timer.pausedTotal,timer.stoppedAt]:null]);}
+function settingsSig(){return JSON.stringify([settings.officeDays,settings.overrides,settings.notify,settings.urgent||null,settings.dayMarks,settings.warn,settings.water,waterLog[ymd(new Date())]||[],focus?[focus.phase,focus.phaseEnd,focus.done,focus.n]:null,timer?[timer.target,timer.startedAt,timer.pausedAt,timer.pausedTotal,timer.stoppedAt]:null]);}
 function errText(e){return (e&&e.message)||String(e);}
 function ensureChannel(){
   if(!LN) return Promise.resolve();
