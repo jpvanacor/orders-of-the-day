@@ -424,7 +424,7 @@ details .checks{margin-top:.3rem}
       <section class="sec">
         <h2>Sound and screen</h2>
         <div class="switchrow"><span>Sound effects: the chime for each new order, the last 3 seconds, checks and finished blocks</span><button type="button" class="switch" id="soundTog" aria-pressed="true">On</button></div>
-        <div class="switchrow" id="awakeRow"><span>Keep the screen on while this page is open, so the chime can reach you</span><button type="button" class="switch" id="awakeTog" aria-pressed="false">Off</button></div>
+        <div class="switchrow" id="awakeRow"><span>Keep the screen on while Orders is open, so the chime can reach you</span><button type="button" class="switch" id="awakeTog" aria-pressed="false">Off</button></div>
         <p class="hint">Sound starts after your first tap on the page and plays only while the page is open.</p>
       </section>
       <section class="sec" id="apkSec">
@@ -837,7 +837,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=11;
+var APP_VERSION=12;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -847,6 +847,8 @@ if(!Array.isArray(settings.officeDays)) settings.officeDays=[];
 if(!settings.overrides||typeof settings.overrides!=="object") settings.overrides={};
 if(typeof settings.sound!=="boolean") settings.sound=true;
 if(typeof settings.awake!=="boolean") settings.awake=false;
+/* The Android app never had a working keep-screen-on: turn it on once there, it can be switched off. */
+if(NATIVE&&!settings.awakeApp){settings.awakeApp=true;settings.awake=true;}
 if(typeof settings.notify!=="boolean") settings.notify=true;
 if(typeof settings.warn!=="boolean") settings.warn=true;
 if(typeof settings.water!=="boolean") settings.water=true;
@@ -948,9 +950,15 @@ function sfx(name){
 }
 
 /* Keep the screen on while the page is open. */
-var lock=null,canWake=!NATIVE&&("wakeLock" in navigator);
+var SCREEN=NATIVE?((CAP.Plugins&&CAP.Plugins.Screen)||(typeof CAP.registerPlugin==="function"?CAP.registerPlugin("Screen"):null)):null;
+var lock=null,canWake=NATIVE?!!SCREEN:("wakeLock" in navigator);
 function requestWake(){
   if(!canWake||!settings.awake||document.hidden||lock) return;
+  if(NATIVE){
+    lock={app:true};
+    try{SCREEN.keepOn({on:true}).then(renderTools,function(){lock=null;renderTools();});}catch(e){lock=null;}
+    return;
+  }
   try{
     navigator.wakeLock.request("screen").then(function(l){
       lock=l;
@@ -959,7 +967,10 @@ function requestWake(){
     },function(){lock=null;renderTools();});
   }catch(e){}
 }
-function releaseWake(){if(lock){try{lock.release();}catch(e){}lock=null;}}
+function releaseWake(){
+  if(NATIVE){lock=null;if(SCREEN){try{SCREEN.keepOn({on:false});}catch(e){}}return;}
+  if(lock){try{lock.release();}catch(e){}lock=null;}
+}
 
 /* Motion */
 function center(node){var r=node.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};}
