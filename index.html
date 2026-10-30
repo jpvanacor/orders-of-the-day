@@ -156,6 +156,19 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .chip.is-sick{box-shadow:inset 0 -4px 0 var(--cat-sleep)}
 .weeknav{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
 .weeknav span{font:700 .78rem/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.earlier{margin-top:.75rem;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:.75rem .85rem .3rem}
+.earlier-h{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin:0}
+.earlier-h .k{font:700 .72rem/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.earlier-n{font:500 .8rem/1 var(--font-mono);color:var(--muted);white-space:nowrap}
+.eb+.eb{border-top:1px solid var(--line);margin-top:.15rem}
+.eb-h{display:flex;align-items:center;gap:.5rem;margin:.65rem 0 0;font:700 .86rem/1.25 var(--font-body);min-width:0}
+.eb-h i{width:.55rem;height:.55rem;border-radius:50%;background:var(--c);flex:none}
+.eb-h span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eb-h time{margin-left:auto;font:500 .78rem/1 var(--font-mono);color:var(--muted);flex:none}
+.eb .checks label{padding:.55rem 0}
+.eb .checks li{transition:opacity .25s ease,transform .25s ease}
+.eb .checks li.gone{opacity:0;transform:translateX(14px)}
+.earlier-more{appearance:none;border:0;background:none;padding:.7rem 0 .55rem;color:var(--muted);font:700 .72rem/1 var(--font-body);letter-spacing:.1em;text-transform:uppercase;text-decoration:underline;text-underline-offset:.25em;cursor:pointer}
 .trackers{margin-top:.75rem;background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .trk{position:relative;display:grid;grid-template-columns:4.6rem minmax(0,1fr) auto;align-items:center;gap:.5rem;padding:.55rem .75rem .6rem}
 .trk+.trk{border-top:1px solid var(--line)}
@@ -335,6 +348,11 @@ details .checks{margin-top:.3rem}
           <span class="trk-btns"><button type="button" class="sbtn" id="waterUndo" aria-label="Remove the last cup" hidden>&#8722;</button><button type="button" class="sbtn" id="waterAdd">+ Cup</button></span>
         </div>
       </div>
+      <section class="earlier" id="earlier" aria-labelledby="earlierK" hidden>
+        <p class="earlier-h"><span class="k" id="earlierK">Earlier, still unticked</span><span class="earlier-n" id="earlierN"></span></p>
+        <div id="earlierList"></div>
+        <button type="button" class="earlier-more" id="earlierMore" hidden></button>
+      </section>
       <p class="rule"><b>Standing rule.</b> Missed a block? Drop it and do what this screen says now. Never try to catch up.</p>
     </section>
 
@@ -837,7 +855,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=12;
+var APP_VERSION=13;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -1058,6 +1076,50 @@ function checklist(b,prefix){
     li.append(lab);ul.append(li);
   });
   return ul;
+}
+
+/* Earlier, still unticked: items from blocks that already ended, ticked right here instead of going back in the Day tab.
+   Today's blocks, plus last night's (from 18:00) until noon. The most recent come first. */
+var earlier={all:false,timer:null};
+function earlierBlocks(now){
+  var out=[],start=startOfDay(now),lastNight=new Date(start.getTime()-6*3600000),days=now.getHours()<12?[addDays(start,-1),start]:[start];
+  days.forEach(function(d){
+    timeline(d,settings).forEach(function(b){
+      if(b.endAt>now||b.endAt<lastNight||!b.items.length) return;
+      var open=b.items.filter(function(i){return !isChecked(b.day,i.id);});
+      if(open.length) out.push({b:b,open:open});
+    });
+  });
+  return out.reverse();
+}
+function renderEarlier(now){
+  var box=$("earlier"),list=$("earlierList"),groups=earlierBlocks(now),shown=earlier.all?groups:groups.slice(0,2),today=ymd(now),n=0;
+  clearTimeout(earlier.timer);
+  list.textContent="";
+  box.hidden=!groups.length;
+  if(!groups.length) return;
+  groups.forEach(function(g){n+=g.open.length;});
+  shown.forEach(function(g){
+    var b=g.b,wrap=el("div","eb"),h=el("p","eb-h"),only=Object.create(b);
+    only.items=g.open;
+    wrap.style.setProperty("--c","var(--cat-"+b.cat+")");
+    h.append(el("i"),el("span",null,(b.day!==today?"Yesterday: ":"")+b.title),el("time",null,hhmm(b.startAt)));
+    wrap.append(h,checklist(only,"e"));
+    list.append(wrap);
+  });
+  $("earlierN").textContent=n===1?"1 item":n+" items";
+  var more=groups.length-shown.length;
+  $("earlierMore").hidden=!more;
+  $("earlierMore").textContent=more===1?"1 more block":more+" more blocks";
+}
+function earlierTicked(){
+  clearTimeout(earlier.timer);
+  earlier.timer=setTimeout(function(){
+    var gone=$("earlierList").querySelectorAll("input:checked");
+    if(!gone.length){renderEarlier(new Date());return;}
+    gone.forEach(function(c){var li=c.closest("li");if(li) li.classList.add("gone");});
+    earlier.timer=setTimeout(function(){renderEarlier(new Date());},RM()?0:280);
+  },1300);
 }
 
 function renderToolbar(now){
@@ -1564,6 +1626,8 @@ function renderAll(now,animate){
   renderWater(now,false);
   focusAdvance(now.getTime());
   renderFocus(now,r);
+  earlier.all=false;
+  renderEarlier(now);
   state.lastKey=r?r.block.day+"/"+r.block.key:"";
   state.lastDay=ymd(now);
 }
@@ -1577,6 +1641,7 @@ function show(view,remember){
     if(x===view) $("tab-"+x).setAttribute("aria-current","page"); else $("tab-"+x).removeAttribute("aria-current");
   });
   if(remember){try{history.replaceState(null,"","#"+view);}catch(e){}}
+  if(view==="now"&&changed) renderEarlier(new Date());
   window.scrollTo(0,0);
   if(changed&&!RM()) restart(v,"in");
   if(view==="day"){
@@ -1642,6 +1707,8 @@ VIEWS.forEach(function(v){$("tab-"+v).addEventListener("click",function(){if(sta
 $("dtHome").addEventListener("click",function(){setToday("home");});
 $("wtStart").addEventListener("click",startTimer);
 $("waterAdd").addEventListener("click",addCup);
+$("earlierList").addEventListener("change",earlierTicked);
+$("earlierMore").addEventListener("click",function(){earlier.all=true;sfx("tap");renderEarlier(new Date());});
 $("focusGo").addEventListener("click",startFocus);
 $("focusStop").addEventListener("click",stopFocus);
 $("waterUndo").addEventListener("click",undoCup);

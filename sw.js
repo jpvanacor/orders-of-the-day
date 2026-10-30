@@ -1,4 +1,4 @@
-const CACHE = "orders-v12";
+const CACHE = "orders-v13";
 const SHELL = [
   "./",
   "./index.html",
