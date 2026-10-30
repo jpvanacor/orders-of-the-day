@@ -5,6 +5,15 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.graphics.Typeface;
+import android.text.InputType;
+import android.util.TypedValue;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -41,9 +50,15 @@ public class AlarmActivity extends Activity {
     private static final int CAMERA_REQUEST = 7301;
     private static final int BG = 0xFF0E1317;
 
+    private static final int INK = 0xFFE6ECF0;
+    private static final int MUTED = 0xFF94A2AD;
+
     private WebView web;
+    private FrameLayout root;
     private PermissionRequest pending;
     private boolean stopped;
+    private boolean fallbackShown;
+    private volatile boolean loaded;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     /** Close the screen when the ringing ended some other way (the one-hour limit). */
@@ -55,6 +70,14 @@ public class AlarmActivity extends Activity {
                 return;
             }
             handler.postDelayed(this, 2000);
+        }
+    };
+
+    /** If the page never says it's ready, a plain screen takes over, so the alarm can always be stopped. */
+    private final Runnable fallbackCheck = new Runnable() {
+        @Override
+        public void run() {
+            if (!loaded && !stopped) showFallback();
         }
     };
 
@@ -88,7 +111,25 @@ public class AlarmActivity extends Activity {
             );
         }
 
-        web = new WebView(this);
+        root = new FrameLayout(this);
+        root.setBackgroundColor(BG);
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                return applyInsets(v, insets);
+            }
+        });
+        setContentView(root);
+        handler.postDelayed(watch, 2000);
+        try {
+            web = new WebView(this);
+        } catch (RuntimeException e) {
+            web = null;
+        }
+        if (web == null) {
+            showFallback();
+            return;
+        }
         web.setBackgroundColor(BG);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -114,18 +155,60 @@ public class AlarmActivity extends Activity {
             }
         });
 
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(BG);
         root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+        web.loadUrl("https://" + HOST + "/alarm.html");
+        handler.postDelayed(fallbackCheck, 10000);
+    }
+
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    private void showFallback() {
+        if (fallbackShown || stopped) return;
+        fallbackShown = true;
+        if (web != null) {
+            root.removeView(web);
+            web.destroy();
+            web = null;
+        }
+        final boolean practice = WakeAlarm.isPractice(this);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(28), dp(20), dp(20));
+        TextView title = new TextView(this);
+        title.setText("Wake up. Shower first.");
+        title.setTextColor(INK);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        TextView sub = new TextView(this);
+        sub.setText(practice
+            ? "The alarm screen didn't load. Practice mornings are on, so Stop works right away."
+            : "The alarm screen didn't load. Type this sentence to stop the alarm:\n\n" + WakeAlarm.SENTENCE);
+        sub.setTextColor(MUTED);
+        sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+        sub.setPadding(0, dp(12), 0, dp(16));
+        final EditText input = new EditText(this);
+        input.setTextColor(INK);
+        input.setHintTextColor(MUTED);
+        input.setHint("Type the sentence");
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        Button stop = new Button(this);
+        stop.setText("Stop the alarm");
+        stop.setOnClickListener(new View.OnClickListener() {
             @Override
-            public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-                return applyInsets(v, insets);
+            public void onClick(View v) {
+                if (practice || WakeAlarm.sentenceMatches(input.getText().toString())) stopAlarm();
+                else Toast.makeText(AlarmActivity.this, "Type the sentence exactly", Toast.LENGTH_SHORT).show();
             }
         });
-        setContentView(root);
-        web.loadUrl("https://" + HOST + "/alarm.html");
-        handler.postDelayed(watch, 2000);
+        box.addView(title);
+        box.addView(sub);
+        if (!practice) box.addView(input);
+        box.addView(stop);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+        root.addView(scroll, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     @SuppressWarnings("deprecation")
@@ -219,6 +302,7 @@ public class AlarmActivity extends Activity {
             try {
                 o.put("sentence", WakeAlarm.SENTENCE);
                 o.put("test", WakeAlarm.isTest(AlarmActivity.this));
+                o.put("practice", WakeAlarm.isPractice(AlarmActivity.this));
             } catch (JSONException ignored) {
                 // stays empty
             }
@@ -228,6 +312,18 @@ public class AlarmActivity extends Activity {
         @JavascriptInterface
         public boolean check(String text) {
             if (!WakeAlarm.matches(text)) return false;
+            runOnUiThread(stopper);
+            return true;
+        }
+
+        @JavascriptInterface
+        public void ready() {
+            loaded = true;
+        }
+
+        @JavascriptInterface
+        public boolean practice() {
+            if (!WakeAlarm.isPractice(AlarmActivity.this)) return false;
             runOnUiThread(stopper);
             return true;
         }

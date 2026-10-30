@@ -8,6 +8,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -228,6 +229,9 @@ public class WakeAlarmService extends Service {
             .setContentIntent(screen)
             .setFullScreenIntent(screen, true);
         if (Build.VERSION.SDK_INT >= 31) b.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
+        if (WakeAlarm.isPractice(c)) {
+            b.addAction(new Notification.Action.Builder(Icon.createWithResource(c, R.drawable.ic_stat_orders), "Stop (practice)", WakeAlarm.stopIntent(c)).build());
+        }
         if (Build.VERSION.SDK_INT < 26) {
             b.setPriority(Notification.PRIORITY_MAX);
             if (fallback) b.setDefaults(Notification.DEFAULT_ALL);

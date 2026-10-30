@@ -19,12 +19,14 @@ final class WakeAlarm {
     static final String CODE = "ORDERS-SHOWER-39FC9E7E";
     static final String SENTENCE = "I am awake and I am going to shower now";
     static final String ACTION_FIRE = "io.github.jpvanacor.orders.WAKE_FIRE";
+    static final String ACTION_STOP = "io.github.jpvanacor.orders.WAKE_STOP";
     static final String EXTRA_TEST = "test";
     /** It gives up after an hour, so a phone left at home doesn't ring all day. */
     static final long RING_LIMIT_MS = 60L * 60L * 1000L;
     private static final int REQ_FIRE = 7101;
     private static final int REQ_TEST = 7102;
     private static final int REQ_SHOW = 7103;
+    private static final int REQ_STOP = 7104;
 
     private WakeAlarm() {}
 
@@ -32,14 +34,24 @@ final class WakeAlarm {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    static void save(Context c, boolean enabled, long[] times) {
+    static void save(Context c, boolean enabled, boolean practice, long[] times) {
         StringBuilder sb = new StringBuilder();
         for (long t : times) {
             if (sb.length() > 0) sb.append(',');
             sb.append(t);
         }
-        prefs(c).edit().putBoolean("enabled", enabled).putString("times", sb.toString()).apply();
+        prefs(c).edit().putBoolean("enabled", enabled).putBoolean("practice", practice).putString("times", sb.toString()).apply();
         scheduleNext(c);
+    }
+
+    /** Practice mornings: a plain Stop on the alarm screen and on the notification, while the code is new. */
+    static boolean isPractice(Context c) {
+        return prefs(c).getBoolean("practice", false);
+    }
+
+    static PendingIntent stopIntent(Context c) {
+        Intent i = new Intent(c, WakeAlarmReceiver.class).setAction(ACTION_STOP);
+        return PendingIntent.getBroadcast(c, REQ_STOP, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     static boolean enabled(Context c) {

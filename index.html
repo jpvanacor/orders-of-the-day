@@ -398,6 +398,7 @@ details .checks{margin-top:.3rem}
       <section class="sec" id="alarmSec" hidden>
         <h2>Wake alarm</h2>
         <div class="switchrow"><span>Rings at your wake time: 06:45 on weekdays, 07:30 on weekends and days off, never on sick days. It only stops when you scan the code by the shower.</span><button type="button" class="switch" id="alarmTog" aria-pressed="false">Off</button></div>
+        <div class="switchrow"><span>Practice mornings: a plain Stop button on the alarm screen, in case the code doesn't scan. Turn it off once scanning works.</span><button type="button" class="switch" id="alarmPracticeTog" aria-pressed="true">On</button></div>
         <p class="hint" id="alarmStatus">Checking the alarm.</p>
         <div class="btnrow"><button type="button" class="switch" id="alarmCam" hidden>Allow the camera</button><button type="button" class="switch" id="alarmFull" hidden>Allow full screen</button><button type="button" class="switch" id="alarmTest">Test in 10 s</button></div>
         <p class="hint">The code to print: <a href="https://jpvanacor.github.io/orders-of-the-day/shower-code.pdf" target="_blank" rel="noopener">shower-code.pdf</a>. Tape it next to the shower, at eye level, in a plastic sleeve. Can't scan it? The alarm screen also takes a typed sentence.</p>
@@ -855,7 +856,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=13;
+var APP_VERSION=14;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -870,6 +871,7 @@ if(NATIVE&&!settings.awakeApp){settings.awakeApp=true;settings.awake=true;}
 if(typeof settings.notify!=="boolean") settings.notify=true;
 if(typeof settings.warn!=="boolean") settings.warn=true;
 if(typeof settings.water!=="boolean") settings.water=true;
+if(typeof settings.alarmPractice!=="boolean") settings.alarmPractice=true;
 if(!settings.dayMarks||typeof settings.dayMarks!=="object") settings.dayMarks={};
 var checks=load(C_KEY,null)||{};
 var T_KEY="ood.timer.v1",timer=load(T_KEY,null),stopArm=0;
@@ -1394,9 +1396,22 @@ function timerState(nowMs){
   var ref=timer.stoppedAt||timer.pausedAt||nowMs,worked=Math.max(0,ref-timer.startedAt-(timer.pausedTotal||0)),left=timer.target*60000-worked;
   return {worked:worked,left:left,stopped:!!timer.stoppedAt,paused:!timer.stoppedAt&&!!timer.pausedAt,running:!timer.stoppedAt&&!timer.pausedAt,endsAt:nowMs+left};
 }
+/* When the work time is done, the timer stops by itself at that minute. */
+function timerAutoStop(nowMs){
+  if(!timer||timer.stoppedAt||timer.pausedAt) return false;
+  var endAt=timer.startedAt+(timer.pausedTotal||0)+timer.target*60000;
+  if(nowMs<endAt) return false;
+  var live=!timer.doneSeen&&nowMs-endAt<90000&&!document.hidden;
+  timer.stoppedAt=endAt;timer.doneSeen=true;
+  saveTimer();
+  if(live){sfx("day");celebrate({cat:"work"},center($("workTimer")),false);}
+  scheduleSoon(true);
+  return true;
+}
 function renderTimer(now){
   var box=$("workTimer"),nowMs=now.getTime();
   if(timer&&timer.day!==ymd(now)&&(timer.stoppedAt||nowMs-timer.startedAt>20*3600000)){timer=null;saveTimer();}
+  timerAutoStop(nowMs);
   var st=timerState(nowMs),lastWork=null;
   timeline(now,settings).forEach(function(b){if(b.cat==="work") lastWork=b.endAt;});
   var show=!!st||(!!lastWork&&now<lastWork);
@@ -1416,19 +1431,15 @@ function renderTimer(now){
   $("wtLen").hidden=!!st;
   $("wtBar").style.width=(st?Math.min(100,100*st.worked/(target*60000)):0).toFixed(2)+"%";
   $("wtStart").hidden=!!st;
-  $("wtPause").hidden=!st;
+  $("wtPause").hidden=!st||(st.stopped&&st.left<=0);
   $("wtPause").textContent=st&&(st.paused||st.stopped)?"Resume":"Pause";
   $("wtStop").hidden=!st||st.stopped;
   $("wtStop").textContent=Date.now()<stopArm?"Sure?":"Stop";
-  if(st&&st.running&&st.left<=0&&!timer.doneSeen){
-    timer.doneSeen=true;saveTimer();
-    sfx("day");
-    celebrate({cat:"work"},center(box),false);
-  }
 }
 
 /* Focus sessions: the rest of a long work or study block, split into a few equal sessions with short breaks.
-   Nothing starts by itself. You start each session, and the time left is spread again over the sessions left. */
+   You start it once; then breaks and sessions follow each other by themselves until the end.
+   Skipping a break spreads the extra time over the sessions left. */
 var F_KEY="ood.focus.v1",focus=load(F_KEY,null),focusArm=0,FOCUS={target:55,brk:5,min:25};
 function saveFocus(){save(F_KEY,focus);}
 function splitPlan(ms,count){
@@ -1454,16 +1465,27 @@ function focusOffer(r,nowMs){
   var end=focusEnd(r,nowMs),sp=splitPlan(end-nowMs);
   return sp.n>=2?{end:end,n:sp.n,f:sp.f,cat:r.block.cat}:null;
 }
+/* What comes after a phase: a break after a session, the next session after a break, or nothing at the end. */
+function focusStep(f,s){
+  if(s.phase==="focus"){
+    var done=s.done+1;
+    if(done>=s.n||s.phaseEnd>=f.end-60000) return null;
+    return {phase:"break",phaseStart:s.phaseEnd,phaseEnd:Math.min(f.end,s.phaseEnd+FOCUS.brk*60000),done:done,n:s.n};
+  }
+  if(s.phaseEnd>=f.end-60000) return null;
+  var sp=splitPlan(f.end-s.phaseEnd,s.n-s.done);
+  return {phase:"focus",phaseStart:s.phaseEnd,phaseEnd:s.phaseEnd+sp.f,done:s.done,n:s.done+sp.n};
+}
 function focusAdvance(nowMs){
   if(!focus) return null;
-  var ev=null,at=0;
-  if(focus.phase==="focus"&&nowMs>=focus.phaseEnd){
-    at=focus.phaseEnd;focus.done++;
-    if(focus.done>=focus.n||focus.phaseEnd>=focus.end-60000){focus=null;saveFocus();return {ev:"finished",late:nowMs-at>5000};}
-    focus.phase="break";focus.phaseStart=focus.phaseEnd;focus.phaseEnd=Math.min(focus.end,focus.phaseStart+FOCUS.brk*60000);ev="break";
+  var ev=null,at=0,guard=0;
+  while(focus&&nowMs>=focus.phaseEnd&&guard++<60){
+    var nx=focusStep(focus,focus);
+    at=focus.phaseEnd;
+    if(!nx){focus=null;ev="finished";break;}
+    focus.phase=nx.phase;focus.phaseStart=nx.phaseStart;focus.phaseEnd=nx.phaseEnd;focus.done=nx.done;focus.n=nx.n;
+    ev=nx.phase==="break"?"break":"next";
   }
-  if(focus.phase==="break"&&nowMs>=focus.phaseEnd){at=focus.phaseEnd;focus.phase="ready";ev="ready";}
-  if(nowMs>=focus.end){at=focus.end;focus=null;ev="ended";}
   if(!ev) return null;
   saveFocus();
   return {ev:ev,late:nowMs-at>5000};
@@ -1482,12 +1504,9 @@ function renderFocus(now,r){
     val=fmtClock(focus.phaseEnd-nowMs);
     sub=(focus.done+1)+" of "+focus.n+", "+(focus.done+1>=focus.n?"ends ":"break at ")+hhmm(new Date(focus.phaseEnd));
     cls="is-running";go=false;p=(nowMs-focus.phaseStart)/(focus.phaseEnd-focus.phaseStart);
-  } else if(focus.phase==="break"){
-    label="Break";val=fmtClock(focus.phaseEnd-nowMs);sub="get up and walk";c="var(--cat-home)";cls="is-due";
-    p=(nowMs-focus.phaseStart)/(focus.phaseEnd-focus.phaseStart);
   } else {
-    var sp=splitPlan(focus.end-nowMs,focus.n-focus.done);
-    val=Math.round(sp.f/60000)+" min";sub="break over, "+(focus.done+1)+" of "+(focus.done+sp.n);c="var(--cat-home)";cls="is-due is-running";
+    label="Break";val=fmtClock(focus.phaseEnd-nowMs);sub="get up and walk";c="var(--cat-home)";cls="is-due";go="Skip";
+    p=(nowMs-focus.phaseStart)/(focus.phaseEnd-focus.phaseStart);
   }
   row.className="trk"+(cls?" "+cls:"");
   row.style.setProperty("--c",c);
@@ -1495,6 +1514,7 @@ function renderFocus(now,r){
   $("focusVal").textContent=val;
   $("focusSub").textContent=sub;
   $("focusGo").hidden=!go;
+  $("focusGo").textContent=go==="Skip"?"Skip":"Start";
   $("focusStop").hidden=!focus;
   $("focusStop").textContent=Date.now()<focusArm?"Sure?":"Stop";
   $("focusBar").style.width=(Math.max(0,Math.min(1,p))*100).toFixed(2)+"%";
@@ -1670,7 +1690,7 @@ function tick(){
     if(fa){
       if(!fa.late&&!document.hidden){
         if(fa.ev==="break"){sfx("block");var fr=$("focusRow");if(!fr.hidden) burst(center(fr).x,center(fr).y,["var(--cat-home)"],10,{power:60,gravity:20,size:6});}
-        else if(fa.ev==="ready") sfx("tick");
+        else if(fa.ev==="next") sfx("block");
         else if(fa.ev==="finished") sfx("done");
       }
       scheduleSoon(true);
@@ -1759,17 +1779,18 @@ function notifPlan(now){
   }
   var ts=timerState(now.getTime());
   if(ts&&ts.running&&ts.left>0){
-    out.push({id:id++,kind:"block",at:new Date(ts.endsAt),title:"Work time done",body:fmtLen(timer.target)+" of work since "+hhmm(new Date(timer.startedAt))+". Finish what you're on and stop."});
+    out.push({id:id++,kind:"block",at:new Date(ts.endsAt),title:"Work time done",body:fmtLen(timer.target)+" of work since "+hhmm(new Date(timer.startedAt))+". The timer stopped. Finish what you're on and close everything."});
     var tw=new Date(ts.endsAt-5*60000);
     if(settings.warn&&tw>now) out.push({id:id++,kind:"warn",at:tw,title:"In 5 min: work time done",body:"Start wrapping up."});
   }
   if(focus){
-    var nowMs=now.getTime(),fb=FOCUS.brk*60000;
-    if(focus.phase==="focus"&&focus.done+1<focus.n&&focus.phaseEnd>nowMs){
-      out.push({id:id++,kind:"block",at:new Date(focus.phaseEnd),title:"Break: stand up and walk around",body:FOCUS.brk+" minutes. Then start session "+(focus.done+2)+" of "+focus.n+"."});
-      out.push({id:id++,kind:"warn",at:new Date(Math.min(focus.end,focus.phaseEnd+fb)),title:"Break over",body:"Sit down and start session "+(focus.done+2)+" in Orders."});
-    } else if(focus.phase==="break"&&focus.phaseEnd>nowMs){
-      out.push({id:id++,kind:"warn",at:new Date(focus.phaseEnd),title:"Break over",body:"Sit down and start session "+(focus.done+1)+" in Orders."});
+    var nowMs=now.getTime(),fs={phase:focus.phase,phaseStart:focus.phaseStart,phaseEnd:focus.phaseEnd,done:focus.done,n:focus.n},fg=0,nx;
+    while((nx=focusStep(focus,fs))&&fg++<40){
+      if(nx.phaseStart>nowMs){
+        if(nx.phase==="break") out.push({id:id++,kind:"block",at:new Date(nx.phaseStart),title:"Break: stand up and walk around",body:FOCUS.brk+" minutes. Session "+(nx.done+1)+" of "+nx.n+" starts at "+hhmm(new Date(nx.phaseEnd))+"."});
+        else out.push({id:id++,kind:"warn",at:new Date(nx.phaseStart),title:"Session "+(nx.done+1)+" of "+nx.n+": back to it",body:nx.done+1>=nx.n?"Last one, until "+hhmm(new Date(nx.phaseEnd))+".":"Next break at "+hhmm(new Date(nx.phaseEnd))+"."});
+      }
+      fs=nx;
     }
   }
   if(settings.water){
@@ -1906,11 +1927,11 @@ function wakeTimes(now){
 }
 function pushWake(force){
   if(!WA) return;
-  var times=settings.alarm?wakeTimes(new Date()):[],sig=JSON.stringify([!!settings.alarm,times]);
+  var times=settings.alarm?wakeTimes(new Date()):[],sig=JSON.stringify([!!settings.alarm,!!settings.alarmPractice,times]);
   if(!force&&sig===wake.sig) return;
   wake.sig=sig;
   try{
-    WA.setSchedule({enabled:!!settings.alarm,times:times}).then(function(s){wake.status=s;wake.error="";renderWake();},function(e){wake.sig="";wake.error=errText(e);renderWake();});
+    WA.setSchedule({enabled:!!settings.alarm,practice:!!settings.alarmPractice,times:times}).then(function(s){wake.status=s;wake.error="";renderWake();},function(e){wake.sig="";wake.error=errText(e);renderWake();});
   }catch(e){wake.sig="";wake.error=errText(e);renderWake();}
 }
 function refreshWake(){
@@ -1922,6 +1943,8 @@ function renderWake(){
   var s=wake.status||{},on=!!settings.alarm,txt,warn=[];
   $("alarmTog").setAttribute("aria-pressed",String(on));
   $("alarmTog").textContent=on?"On":"Off";
+  $("alarmPracticeTog").setAttribute("aria-pressed",String(!!settings.alarmPractice));
+  $("alarmPracticeTog").textContent=settings.alarmPractice?"On":"Off";
   $("alarmCam").hidden=!(on&&s.camera===false);
   $("alarmFull").hidden=!(on&&s.fullScreen===false);
   if(on&&s.camera===false) warn.push("allow the camera");
@@ -1947,6 +1970,9 @@ if(WA){
     try{WA.requestCamera().then(function(s){wake.status=s;renderWake();if(s&&s.camera===false) WA.openSettings({what:"app"});},function(){WA.openSettings({what:"app"});});}catch(e){}
   });
   $("alarmFull").addEventListener("click",function(){try{WA.openSettings({what:"fullscreen"});}catch(e){}});
+  $("alarmPracticeTog").addEventListener("click",function(){
+    settings.alarmPractice=!settings.alarmPractice;save(S_KEY,settings);sfx("toggle");renderWake();pushWake(true);
+  });
   $("alarmTest").addEventListener("click",function(){
     var b=this;
     try{

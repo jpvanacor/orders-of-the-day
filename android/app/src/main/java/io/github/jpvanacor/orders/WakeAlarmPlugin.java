@@ -22,6 +22,7 @@ public class WakeAlarmPlugin extends Plugin {
     @PluginMethod
     public void setSchedule(PluginCall call) {
         boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", false));
+        boolean practice = Boolean.TRUE.equals(call.getBoolean("practice", false));
         JSArray arr = call.getArray("times");
         int n = arr == null ? 0 : arr.length();
         long[] times = new long[n];
@@ -32,7 +33,7 @@ public class WakeAlarmPlugin extends Plugin {
         }
         long[] kept = new long[k];
         System.arraycopy(times, 0, kept, 0, k);
-        WakeAlarm.save(getContext(), enabled, kept);
+        WakeAlarm.save(getContext(), enabled, practice, kept);
         call.resolve(status());
     }
 
@@ -94,6 +95,7 @@ public class WakeAlarmPlugin extends Plugin {
         Context c = getContext();
         JSObject r = new JSObject();
         r.put("enabled", WakeAlarm.enabled(c));
+        r.put("practice", WakeAlarm.isPractice(c));
         r.put("next", WakeAlarm.next(c));
         r.put("ringing", WakeAlarm.isRinging(c));
         r.put("exact", WakeAlarm.canExact(c));
