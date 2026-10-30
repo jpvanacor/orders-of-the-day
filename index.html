@@ -582,8 +582,8 @@ function dayContext(date,settings){
 /* Bulking: three snacks a day on top of the meals, plus one right after morning training.
    Each snack is an item inside the block it falls in, with its own notification at that minute. */
 var SNACKS={
-  am:"a sandwich (cheese, ham or eggs) and a fruit",
-  pm:"yogurt with oats or granola, and a banana",
+  am:"ready to eat: a drinkable yogurt, a banana and a handful of nuts",
+  pm:"ground beef and rice from the batch",
   eve:"a glass of milk and peanut butter toast"
 };
 function snackPlan(c){
@@ -627,7 +627,7 @@ function dayBlocks(c){
     add("sleep",w[2],w[2],"sleep","Sleep","Lights out. Wake at "+c.nextWake+".");
   }
   var wakeShower=[["scan","Scan the code by the shower"],["shower","Shower"],["water","Drink water"],["bed","Make the bed"]];
-  var breakfast=[["eat","Breakfast"],["dishes","Dishes right after"]];
+  var breakfast=[["eat","Eggs, bread and a fruit"],["dishes","Dishes right after"]];
   var hard=[["phone","Phone in the drawer"],["hard","Start with the task that matters most"]];
   var basic=[["counters","Counters"],["trash","Trash out"]];
   var defrostLunch=["defrost","11:50","12:00","meal","Defrost lunch","Put lunch in to defrost, then keep working until 12:00.",[["start","Put lunch in to defrost"]]];
@@ -766,7 +766,7 @@ function dayBlocks(c){
       ["esp","Legislação Especial: "+SPECIAL_SETS[mod(c.week,SPECIAL_SETS.length)]],["adm","Administrativo: "+ADMIN_LAWS[mod(c.week,ADMIN_LAWS.length)]],["breaks","10-minute break each hour"]]);
     add("train","11:00","12:00","body","Train: skills","Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Skills session"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and rinse off while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["rinse","Quick rinse while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
-    var err=[["list","Buy everything on Friday's list"],["snacks","Restock snacks: bread, yogurt, oats, bananas, milk, peanut butter, nuts"]];
+    var err=[["list","Buy everything on Friday's list"],["snacks","Restock: drinkable yogurts, bananas, nuts, eggs, bread, milk, peanut butter, ground beef, rice"]];
     if(c.nth===1) err.push(["restock","Restock cleaning and hygiene supplies","Monthly"]);
     if(c.nth===3) err.push(["haircut","Haircut","Monthly"]);
     add("errands","13:00","14:00","home","Groceries and errands","Everything on Friday's list.",err);
@@ -793,7 +793,7 @@ function dayBlocks(c){
       add("uwork2","13:00","16:00","work","Work, 3 hours","Stop at 16:00.",[["breaks","10-minute break each hour"],["left","Write down what's left for Monday"]]);
       add("rest","16:00","17:00","people","Rest","Away from work. People, a book or outside.");
     } else add("rest","13:00","17:00","people","Time with people and rest","People, a book or outside. No gaming, no series.");
-    var rs=[["cook","Cook for Mon–Wed"],["journal","Read this week's journal"],["score","Read the week score"],["money","Log the week's spending in Central"],["plan","Plan the week in TickTick"],["recycling","Take the recycling out"]];
+    var rs=[["cook","Cook for Mon–Wed"],["beef","Cook ground beef and rice for the week's 16:00 snacks: portion it, freeze half"],["journal","Read this week's journal"],["score","Read the week score"],["money","Log the week's spending in Central"],["plan","Plan the week in TickTick"],["recycling","Take the recycling out"]];
     if(c.nth===1){rs.push(["bills","Pay bills and check subscriptions","Monthly"]);rs.push(["mmoney","Monthly review: money","Monthly"]);}
     if(c.nth===2){
       rs.push(["mstudy","Monthly review: study progress","Monthly"]);
@@ -885,7 +885,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=17;
+var APP_VERSION=18;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
