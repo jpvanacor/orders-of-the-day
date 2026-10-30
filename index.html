@@ -579,6 +579,35 @@ function dayContext(date,settings){
     book:bookOfMonth(d),deep:deepJob(d),qjob:quarterJob(d)};
 }
 
+/* Bulking: three snacks a day on top of the meals, plus one right after morning training.
+   Each snack is an item inside the block it falls in, with its own notification at that minute. */
+var SNACKS={
+  am:"a sandwich (cheese, ham or eggs) and a fruit",
+  pm:"yogurt with oats or granola, and a banana",
+  eve:"a glass of milk and peanut butter toast"
+};
+function snackPlan(c){
+  if(c.sick) return [];
+  var weekend=!c.weekday||c.off;
+  return [
+    ["am",weekend?"10:00":"10:30",SNACKS.am],
+    ["pm",c.dow===6?"15:30":"16:00",SNACKS.pm],
+    ["eve","21:30",SNACKS.eve]
+  ];
+}
+function addSnacks(B,c){
+  snackPlan(c).forEach(function(s){
+    var m=toMin(s[1]);
+    for(var i=0;i<B.length;i++){
+      var b=B[i];
+      if(b.key!=="sleep"&&b.start<=m&&m<b.end){
+        b.items.push({id:"snack."+s[0],text:s[1]+" snack: "+s[2],tag:"",at:m,note:s[2].charAt(0).toUpperCase()+s[2].slice(1)+"."});
+        return;
+      }
+    }
+  });
+  return B;
+}
 function dayBlocks(c){
   var B=[];
   function add(key,start,end,cat,title,detail,items){
@@ -644,14 +673,14 @@ function dayBlocks(c){
       add("study2","16:00","18:00","study",qTitle,"Phone in the drawer.",evening);
     }
     tail("18:00","Dinner and time with people","Defrost first. Dishes right after.",[["defrost","Put dinner in to defrost"],["dishes","Dishes right after"]]);
-    return B;
+    return addSnacks(B,c);
   }
 
   if(c.weekday&&c.urgent){
     var wedU=c.dow===3,wakeU=wakeShower.slice();
     if(wedU) wakeU.push(["wash","Start the washing machine"]);
     add("wake","06:45","07:05","routine","Wake up and shower","Code by the shower, then straight in. No snooze.",wakeU);
-    add("breakfast","07:05","07:20","meal","Breakfast","Simple breakfast. Dishes right after.",breakfast);
+    add("breakfast","07:05","07:20","meal","Breakfast",c.office?"Simple breakfast. Dishes right after. Pack two snacks for the office.":"Simple breakfast. Dishes right after.",c.office?breakfast.concat([["pack","Pack two snacks for the office"]]):breakfast);
     var lunchU=[["lunch","Lunch away from the desk"],["dishes","Dishes right after"],["teeth","Brush your teeth"],["walk","5-minute walk (rain: stretch)"]];
     if(c.office){
       add("uwork1","07:20","08:40","work","Work: hardest task first","From home, before you leave.",hard);
@@ -687,12 +716,12 @@ function dayBlocks(c){
     var wake=wakeShower.slice();
     if(wed) wake.push(["wash","Start the washing machine"]);
     add("wake","06:45","07:05","routine","Wake up and shower","Code by the shower, then straight in. No snooze.",wake);
-    add("breakfast","07:05","07:20","meal","Breakfast","Simple breakfast. Dishes right after.",breakfast);
+    add("breakfast","07:05","07:20","meal","Breakfast",c.office?"Simple breakfast. Dishes right after. Pack two snacks for the office.":"Simple breakfast. Dishes right after.",c.office?breakfast.concat([["pack","Pack two snacks for the office"]]):breakfast);
     if(train){
       add("early","07:20","08:20","body","Train: "+train,"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+train]]);
-      var rn=[["rinse","Quick rinse"],["clothes","Fresh clothes"]];
+      var rn=[["rinse","Quick rinse"],["clothes","Fresh clothes"],["post","Post-workout snack: a banana and a yogurt or a shake"]];
       if(wed) rn.push(["hang","Hang the laundry"]);
-      add("rinse","08:20","08:30","routine","Rinse and change",wed?"Quick rinse, fresh clothes, then hang the laundry.":"Quick rinse, fresh clothes. Then straight to study.",rn);
+      add("rinse","08:20","08:30","routine","Rinse, change, eat",wed?"Quick rinse, fresh clothes, post-workout snack, then hang the laundry.":"Quick rinse, fresh clothes, post-workout snack. Then straight to study.",rn);
     } else {
       add("early","07:20","08:20","study",studyTitle,"Phone in the drawer. Anki first.",studyItems(true,false));
       add("pause","08:20","08:30","routine","Short break","Stand up, water, then back to the same subject.",[["water","Drink water"],["stretch","Stand up and stretch"]]);
@@ -737,7 +766,7 @@ function dayBlocks(c){
       ["esp","Legislação Especial: "+SPECIAL_SETS[mod(c.week,SPECIAL_SETS.length)]],["adm","Administrativo: "+ADMIN_LAWS[mod(c.week,ADMIN_LAWS.length)]],["breaks","10-minute break each hour"]]);
     add("train","11:00","12:00","body","Train: skills","Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Skills session"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and rinse off while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["rinse","Quick rinse while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
-    var err=[["list","Buy everything on Friday's list"]];
+    var err=[["list","Buy everything on Friday's list"],["snacks","Restock snacks: bread, yogurt, oats, bananas, milk, peanut butter, nuts"]];
     if(c.nth===1) err.push(["restock","Restock cleaning and hygiene supplies","Monthly"]);
     if(c.nth===3) err.push(["haircut","Haircut","Monthly"]);
     add("errands","13:00","14:00","home","Groceries and errands","Everything on Friday's list.",err);
@@ -778,7 +807,7 @@ function dayBlocks(c){
     add("call","18:30","19:00","people","Call someone","Someone you don't see often. At 18:50, put dinner in to defrost.",[["call","Call someone you don't see often"],["defrost","At 18:50, put dinner in to defrost"]]);
     tail("19:00","Dinner and time with people","Dishes right after. No screens.",[["dishes","Dishes right after"]]);
   }
-  return B;
+  return addSnacks(B,c);
 }
 
 function timeline(date,settings){
@@ -856,7 +885,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=14;
+var APP_VERSION=15;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -1775,6 +1804,16 @@ function notifPlan(now){
         var at=new Date(b.startAt.getTime()-5*60000);
         if(at>now) out.push({id:id++,kind:"warn",at:at,title:"In 5 min: "+b.title,body:"Time to wrap up: "+tl[i-1].title});
       }
+    });
+  }
+  for(var sd=0;sd<NOTIF_DAYS;sd++){
+    var sday=addDays(start,sd);
+    timeline(sday,settings).forEach(function(b){
+      b.items.forEach(function(it){
+        if(typeof it.at!=="number") return;
+        var at=new Date(sday.getFullYear(),sday.getMonth(),sday.getDate(),0,it.at);
+        if(at>now) out.push({id:id++,kind:"block",at:at,title:"Snack time",body:it.note+" Then tick it in Orders."});
+      });
     });
   }
   var ts=timerState(now.getTime());
