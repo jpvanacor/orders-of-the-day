@@ -21,12 +21,18 @@ final class WakeAlarm {
     static final String ACTION_FIRE = "io.github.jpvanacor.orders.WAKE_FIRE";
     static final String ACTION_STOP = "io.github.jpvanacor.orders.WAKE_STOP";
     static final String EXTRA_TEST = "test";
+    static final String EXTRA_KIND = "kind";
+    static final String KIND_WAKE = "wake";
+    /** The work timer's end: it rings like an alarm, and a plain Stop ends it. */
+    static final String KIND_WORK = "work";
+    static final long WORK_LIMIT_MS = 15L * 60L * 1000L;
     /** It gives up after an hour, so a phone left at home doesn't ring all day. */
     static final long RING_LIMIT_MS = 60L * 60L * 1000L;
     private static final int REQ_FIRE = 7101;
     private static final int REQ_TEST = 7102;
     private static final int REQ_SHOW = 7103;
     private static final int REQ_STOP = 7104;
+    private static final int REQ_WORK = 7105;
 
     private WakeAlarm() {}
 
@@ -87,6 +93,33 @@ final class WakeAlarm {
         setClock(c, am, at, fire);
     }
 
+    /** The minute the work timer ends, or 0 when it isn't running. */
+    static void setWork(Context c, long at) {
+        prefs(c).edit().putLong("workAt", at).apply();
+        scheduleWork(c);
+    }
+
+    static long workAt(Context c) {
+        return prefs(c).getLong("workAt", 0);
+    }
+
+    static void scheduleWork(Context c) {
+        AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        PendingIntent fire = workIntent(c);
+        long at = workAt(c);
+        if (at <= System.currentTimeMillis() + 1000) {
+            am.cancel(fire);
+            return;
+        }
+        setClock(c, am, at, fire);
+    }
+
+    static PendingIntent workIntent(Context c) {
+        Intent i = new Intent(c, WakeAlarmReceiver.class).setAction(ACTION_FIRE).putExtra(EXTRA_KIND, KIND_WORK);
+        return PendingIntent.getBroadcast(c, REQ_WORK, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
     static long scheduleTest(Context c, long delayMs) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
         long at = System.currentTimeMillis() + delayMs;
@@ -131,14 +164,27 @@ final class WakeAlarm {
     }
 
     static void markRinging(Context c, boolean ringing, boolean test) {
+        markRinging(c, ringing, test, KIND_WAKE);
+    }
+
+    static void markRinging(Context c, boolean ringing, boolean test, String kind) {
         SharedPreferences.Editor e = prefs(c).edit().putBoolean("ringing", ringing);
-        if (ringing) e.putLong("ringStart", System.currentTimeMillis()).putBoolean("ringTest", test);
+        if (ringing) e.putLong("ringStart", System.currentTimeMillis()).putBoolean("ringTest", test).putString("ringKind", kind);
         e.apply();
+    }
+
+    static String ringKind(Context c) {
+        String k = prefs(c).getString("ringKind", KIND_WAKE);
+        return k == null ? KIND_WAKE : k;
+    }
+
+    static long limitFor(String kind) {
+        return KIND_WORK.equals(kind) ? WORK_LIMIT_MS : RING_LIMIT_MS;
     }
 
     static boolean isRinging(Context c) {
         SharedPreferences p = prefs(c);
-        return p.getBoolean("ringing", false) && System.currentTimeMillis() - p.getLong("ringStart", 0) < RING_LIMIT_MS + 60000;
+        return p.getBoolean("ringing", false) && System.currentTimeMillis() - p.getLong("ringStart", 0) < limitFor(ringKind(c)) + 60000;
     }
 
     static boolean isTest(Context c) {

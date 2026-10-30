@@ -38,6 +38,12 @@ public class WakeAlarmPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void setWorkAlarm(PluginCall call) {
+        WakeAlarm.setWork(getContext(), call.getData().optLong("at", 0));
+        call.resolve(status());
+    }
+
+    @PluginMethod
     public void status(PluginCall call) {
         call.resolve(status());
     }
@@ -97,6 +103,7 @@ public class WakeAlarmPlugin extends Plugin {
         r.put("enabled", WakeAlarm.enabled(c));
         r.put("practice", WakeAlarm.isPractice(c));
         r.put("next", WakeAlarm.next(c));
+        r.put("workAt", WakeAlarm.workAt(c));
         r.put("ringing", WakeAlarm.isRinging(c));
         r.put("exact", WakeAlarm.canExact(c));
         r.put("fullScreen", WakeAlarm.canFullScreen(c));

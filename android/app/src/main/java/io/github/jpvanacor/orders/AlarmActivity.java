@@ -121,6 +121,10 @@ public class AlarmActivity extends Activity {
         });
         setContentView(root);
         handler.postDelayed(watch, 2000);
+        if (WakeAlarm.KIND_WORK.equals(WakeAlarm.ringKind(this))) {
+            showWorkScreen();
+            return;
+        }
         try {
             web = new WebView(this);
         } catch (RuntimeException e) {
@@ -162,6 +166,50 @@ public class AlarmActivity extends Activity {
 
     private int dp(int v) {
         return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    /** The work timer's end: a plain screen with one big Stop. */
+    private void showWorkScreen() {
+        fallbackShown = true;
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(36), dp(20), dp(24));
+        TextView kicker = new TextView(this);
+        kicker.setText("WORK TIMER");
+        kicker.setTextColor(0xFF57CCD5);
+        kicker.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        kicker.setTypeface(Typeface.DEFAULT_BOLD);
+        kicker.setLetterSpacing(0.16f);
+        TextView title = new TextView(this);
+        title.setText("Work time done.");
+        title.setTextColor(INK);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40);
+        title.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
+        title.setPadding(0, dp(8), 0, 0);
+        TextView sub = new TextView(this);
+        sub.setText("Stop the alarm, write tomorrow's top 3, and close everything.");
+        sub.setTextColor(MUTED);
+        sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        sub.setPadding(0, dp(12), 0, dp(28));
+        Button stop = new Button(this);
+        stop.setText("Stop");
+        stop.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        stop.setTextColor(0xFF0E1317);
+        stop.setBackgroundColor(INK);
+        stop.setMinHeight(dp(64));
+        stop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                stopAlarm();
+            }
+        });
+        box.addView(kicker);
+        box.addView(title);
+        box.addView(sub);
+        box.addView(stop, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(64)));
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+        root.addView(scroll, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     private void showFallback() {

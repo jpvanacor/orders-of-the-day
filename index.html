@@ -885,7 +885,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=16;
+var APP_VERSION=17;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -1818,7 +1818,8 @@ function notifPlan(now){
   }
   var ts=timerState(now.getTime());
   if(ts&&ts.running&&ts.left>0){
-    out.push({id:id++,kind:"block",at:new Date(ts.endsAt),title:"Work time done",body:fmtLen(timer.target)+" of work since "+hhmm(new Date(timer.startedAt))+". The timer stopped. Finish what you're on and close everything."});
+    /* In the Android app the end rings like an alarm instead (WakeAlarm.setWorkAlarm). */
+    if(!(WA&&typeof WA.setWorkAlarm==="function")) out.push({id:id++,kind:"block",at:new Date(ts.endsAt),title:"Work time done",body:fmtLen(timer.target)+" of work since "+hhmm(new Date(timer.startedAt))+". The timer stopped. Finish what you're on and close everything."});
     var tw=new Date(ts.endsAt-5*60000);
     if(settings.warn&&tw>now) out.push({id:id++,kind:"warn",at:tw,title:"In 5 min: work time done",body:"Start wrapping up."});
   }
@@ -1900,7 +1901,7 @@ function reschedule(force){
     }).then(function(){notif.sig=sig;notif.last=Date.now();});
   }).catch(function(e){notif.error=errText(e);}).then(function(){notif.busy=false;renderNotif();if(notif.again){notif.again=false;reschedule(true);}});
 }
-function scheduleSoon(force){clearTimeout(notif.timer);notif.timer=setTimeout(function(){pushWidget();pushWake(false);if(LN) reschedule(force);},700);}
+function scheduleSoon(force){clearTimeout(notif.timer);notif.timer=setTimeout(function(){pushWidget();pushWake(false);pushWorkAlarm(false);if(LN) reschedule(force);},700);}
 
 /* Android home screen widget: the app hands it the next days of blocks. */
 var OW=NATIVE?((CAP.Plugins&&CAP.Plugins.OrdersWidget)||(typeof CAP.registerPlugin==="function"?CAP.registerPlugin("OrdersWidget"):null)):null;
@@ -1973,6 +1974,15 @@ function pushWake(force){
     WA.setSchedule({enabled:!!settings.alarm,practice:!!settings.alarmPractice,times:times}).then(function(s){wake.status=s;wake.error="";renderWake();},function(e){wake.sig="";wake.error=errText(e);renderWake();});
   }catch(e){wake.sig="";wake.error=errText(e);renderWake();}
 }
+/* The work timer's end rings like an alarm in the Android app, with a plain Stop. */
+var workAlarmSig="";
+function pushWorkAlarm(force){
+  if(!WA||typeof WA.setWorkAlarm!=="function") return;
+  var ts=timerState(Date.now()),at=(ts&&ts.running&&ts.left>0)?Math.round(ts.endsAt):0,sig=String(Math.round(at/1000));
+  if(!force&&sig===workAlarmSig) return;
+  workAlarmSig=sig;
+  try{WA.setWorkAlarm({at:at}).then(function(){},function(){workAlarmSig="";});}catch(e){workAlarmSig="";}
+}
 function refreshWake(){
   if(!WA) return;
   try{WA.status().then(function(s){wake.status=s;renderWake();},function(){});}catch(e){}
@@ -2040,7 +2050,7 @@ $("installSec").hidden=NATIVE;
 $("apkSec").hidden=NATIVE;
 $("notifSec").hidden=!NATIVE;
 $("alarmSec").hidden=!WA;
-if(WA){renderWake();pushWake(true);}
+if(WA){renderWake();pushWake(true);pushWorkAlarm(true);}
 $("appVersion").textContent="Version "+APP_VERSION+(NATIVE?" · Android app":" · web app");
 if(!NATIVE&&"serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
 if(NATIVE&&LN){

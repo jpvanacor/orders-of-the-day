@@ -36,27 +36,29 @@ public class WakeAlarmService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private int savedVolume = -1;
     private boolean ringing;
+    private String kind = WakeAlarm.KIND_WAKE;
 
     private final Runnable limit = new Runnable() {
         @Override
         public void run() {
+            boolean wake = !WakeAlarm.KIND_WORK.equals(kind);
             stopRinging();
-            postMissed(WakeAlarmService.this);
+            if (wake) postMissed(WakeAlarmService.this);
             stopSelf();
         }
     };
 
-    static void start(Context c, boolean test) {
-        Intent svc = new Intent(c, WakeAlarmService.class).putExtra(WakeAlarm.EXTRA_TEST, test);
+    static void start(Context c, String kind, boolean test) {
+        Intent svc = new Intent(c, WakeAlarmService.class).putExtra(WakeAlarm.EXTRA_TEST, test).putExtra(WakeAlarm.EXTRA_KIND, kind);
         try {
             if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(svc);
             else c.startService(svc);
         } catch (RuntimeException e) {
             // The system refused a foreground service: ring through a plain notification instead.
-            WakeAlarm.markRinging(c, true, test);
+            WakeAlarm.markRinging(c, true, test, kind);
             NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
-                Notification n = build(c, test, true);
+                Notification n = build(c, kind, test, true);
                 n.flags |= Notification.FLAG_INSISTENT;
                 nm.notify(NOTIF_ID, n);
             }
@@ -71,8 +73,10 @@ public class WakeAlarmService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         boolean test = intent != null && intent.getBooleanExtra(WakeAlarm.EXTRA_TEST, false);
-        WakeAlarm.markRinging(this, true, test);
-        Notification n = build(this, test, false);
+        String k = intent != null ? intent.getStringExtra(WakeAlarm.EXTRA_KIND) : null;
+        if (!ringing) kind = WakeAlarm.KIND_WORK.equals(k) ? WakeAlarm.KIND_WORK : WakeAlarm.KIND_WAKE;
+        WakeAlarm.markRinging(this, true, test, kind);
+        Notification n = build(this, kind, test, false);
         if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
         else startForeground(NOTIF_ID, n);
         startRinging(test);
@@ -94,14 +98,16 @@ public class WakeAlarmService extends Service {
     private void startRinging(boolean test) {
         if (ringing) return;
         ringing = true;
-        WakeAlarm.markRinging(this, true, test);
+        WakeAlarm.markRinging(this, true, test, kind);
+        boolean wake = !WakeAlarm.KIND_WORK.equals(kind);
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if (pm != null) {
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "orders:wake");
-            wakeLock.acquire(WakeAlarm.RING_LIMIT_MS + 60000);
+            wakeLock.acquire(WakeAlarm.limitFor(kind) + 60000);
         }
         AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        if (audio != null) {
+        // Only the wake alarm turns the alarm volume all the way up.
+        if (audio != null && wake) {
             try {
                 savedVolume = audio.getStreamVolume(AudioManager.STREAM_ALARM);
                 audio.setStreamVolume(AudioManager.STREAM_ALARM, audio.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0);
@@ -120,7 +126,7 @@ public class WakeAlarmService extends Service {
                 vibrator.vibrate(pattern, 0);
             }
         }
-        handler.postDelayed(limit, WakeAlarm.RING_LIMIT_MS);
+        handler.postDelayed(limit, WakeAlarm.limitFor(kind));
     }
 
     private MediaPlayer play() {
@@ -213,14 +219,15 @@ public class WakeAlarmService extends Service {
         return PendingIntent.getActivity(c, REQ_SCREEN, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    static Notification build(Context c, boolean test, boolean fallback) {
+    static Notification build(Context c, String kind, boolean test, boolean fallback) {
         channels(c);
+        boolean work = WakeAlarm.KIND_WORK.equals(kind);
         PendingIntent screen = screenIntent(c);
         Notification.Builder b = builder(c, fallback ? CHANNEL_FALLBACK : CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_orders)
             .setColor(0xFF1E5BD0)
-            .setContentTitle(test ? "Test alarm: shower first" : "Wake up. Shower first.")
-            .setContentText("Scan the code by the shower to stop it.")
+            .setContentTitle(work ? "Work time done" : test ? "Test alarm: shower first" : "Wake up. Shower first.")
+            .setContentText(work ? "Stop the alarm, write tomorrow's top 3, close everything." : "Scan the code by the shower to stop it.")
             .setCategory(Notification.CATEGORY_ALARM)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(true)
@@ -229,8 +236,8 @@ public class WakeAlarmService extends Service {
             .setContentIntent(screen)
             .setFullScreenIntent(screen, true);
         if (Build.VERSION.SDK_INT >= 31) b.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
-        if (WakeAlarm.isPractice(c)) {
-            b.addAction(new Notification.Action.Builder(Icon.createWithResource(c, R.drawable.ic_stat_orders), "Stop (practice)", WakeAlarm.stopIntent(c)).build());
+        if (work || WakeAlarm.isPractice(c)) {
+            b.addAction(new Notification.Action.Builder(Icon.createWithResource(c, R.drawable.ic_stat_orders), work ? "Stop" : "Stop (practice)", WakeAlarm.stopIntent(c)).build());
         }
         if (Build.VERSION.SDK_INT < 26) {
             b.setPriority(Notification.PRIORITY_MAX);
