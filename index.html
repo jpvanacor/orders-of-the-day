@@ -885,7 +885,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=15;
+var APP_VERSION=16;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -1110,13 +1110,13 @@ function checklist(b,prefix){
 }
 
 /* Earlier, still unticked: items from blocks that already ended, ticked right here instead of going back in the Day tab.
-   Today's blocks, plus last night's (from 18:00) until noon. The most recent come first. */
+   Today's blocks only: yesterday is let go. The most recent come first. */
 var earlier={all:false,timer:null};
 function earlierBlocks(now){
-  var out=[],start=startOfDay(now),lastNight=new Date(start.getTime()-6*3600000),days=now.getHours()<12?[addDays(start,-1),start]:[start];
-  days.forEach(function(d){
+  var out=[],start=startOfDay(now),today=ymd(start);
+  [start].forEach(function(d){
     timeline(d,settings).forEach(function(b){
-      if(b.endAt>now||b.endAt<lastNight||!b.items.length) return;
+      if(b.endAt>now||b.day!==today||!b.items.length) return;
       var open=b.items.filter(function(i){return !isChecked(b.day,i.id);});
       if(open.length) out.push({b:b,open:open});
     });
@@ -1134,7 +1134,7 @@ function renderEarlier(now){
     var b=g.b,wrap=el("div","eb"),h=el("p","eb-h"),only=Object.create(b);
     only.items=g.open;
     wrap.style.setProperty("--c","var(--cat-"+b.cat+")");
-    h.append(el("i"),el("span",null,(b.day!==today?"Yesterday: ":"")+b.title),el("time",null,hhmm(b.startAt)));
+    h.append(el("i"),el("span",null,b.title),el("time",null,hhmm(b.startAt)));
     wrap.append(h,checklist(only,"e"));
     list.append(wrap);
   });
