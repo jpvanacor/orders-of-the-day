@@ -661,7 +661,7 @@ function dayBlocks(c){
     add("breakfast","07:50","08:05","meal","Breakfast","Simple breakfast. Dishes right after.",breakfast);
     if(c.urgent) add("uwork1","08:05","11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
     else add("study","08:05","11:00","study",studyTitle,"Phone in the drawer. Anki first.",studyItems(true,true).concat([["breaks","10-minute break each hour"]]));
-    if(trainH) add("train","11:00","12:00","body","Train: "+TRAIN_NAME[c.dow],"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+TRAIN_NAME[c.dow]]]);
+    if(trainH) add("train","11:00","12:00","body","Gym: "+TRAIN_NAME[c.dow],"Gym, 1h including travel.",[["go","Gym bag, out the door"],["session","Full session: "+TRAIN_NAME[c.dow]]]);
     else add("walk","11:00","12:00","body","Walk outside","One hour outdoors. If it rains, 30 minutes of stretching at home.");
     add("lunch","12:00","13:00","meal","Lunch",trainH?"Start the defrost and rinse off while it runs.":"Start the defrost, then wash up while it runs.",
       (trainH?[["defrost","Put lunch in to defrost"],["rinse","Quick rinse while it runs"]]:[["defrost","Put lunch in to defrost"]]).concat([["dishes","Dishes right after"],["teeth","Brush your teeth"]]));
@@ -698,9 +698,9 @@ function dayBlocks(c){
       tail("21:00","Rest","Time with people or a book. No work, no screens.");
     } else {
       add("uwork1","07:20","09:15","work","Work: hardest task first","Before messages and email.",hard);
-      var mv=[["circuit","15-minute bodyweight circuit"],["rinse","Quick rinse"]];
+      var mv=[["walk","15-minute walk outside"],["rinse","Quick rinse"]];
       if(wedU) mv.push(["hang","Hang the laundry"]);
-      add("move","09:15","09:45","body","Workout","15-minute bodyweight circuit at home, then a quick rinse.",mv);
+      add("move","09:15","09:45","body","Walk","A 15-minute walk outside, then a quick rinse. No gym in urgent mode.",mv);
       add("work1","09:45","11:50","work","Work","From home.");
       add.apply(null,defrostLunch);
       add("lunch","12:00","12:45","meal","Lunch","Away from the desk. A 5-minute walk if it's dry.",lunchU);
@@ -718,7 +718,7 @@ function dayBlocks(c){
     add("wake","06:45","07:05","routine","Wake up and shower","Code by the shower, then straight in. No snooze.",wake);
     add("breakfast","07:05","07:20","meal","Breakfast",c.office?"Simple breakfast. Dishes right after. Pack two snacks for the office.":"Simple breakfast. Dishes right after.",c.office?breakfast.concat([["pack","Pack two snacks for the office"]]):breakfast);
     if(train){
-      add("early","07:20","08:20","body","Train: "+train,"Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Full session: "+train]]);
+      add("early","07:20","08:20","body","Gym: "+train,"Gym, 1h including travel.",[["go","Gym bag, out the door"],["session","Full session: "+train]]);
       var rn=[["rinse","Quick rinse"],["clothes","Fresh clothes"],["post","Post-workout snack: a banana and a yogurt or a shake"]];
       if(wed) rn.push(["hang","Hang the laundry"]);
       add("rinse","08:20","08:30","routine","Rinse, change, eat",wed?"Quick rinse, fresh clothes, post-workout snack, then hang the laundry.":"Quick rinse, fresh clothes, post-workout snack. Then straight to study.",rn);
@@ -764,7 +764,7 @@ function dayBlocks(c){
     if(c.urgent) add("uwork1","08:05","11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
     else add("study","08:05","11:00","study","Study: Legislação Especial + Administrativo","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],
       ["esp","Legislação Especial: "+SPECIAL_SETS[mod(c.week,SPECIAL_SETS.length)]],["adm","Administrativo: "+ADMIN_LAWS[mod(c.week,ADMIN_LAWS.length)]],["breaks","10-minute break each hour"]]);
-    add("train","11:00","12:00","body","Train: skills","Calisthenics, 1h including travel.",[["go","Shoes on, out the door"],["session","Skills session"]]);
+    add("train","11:00","12:00","body","Gym: full body","Gym, 1h including travel.",[["go","Gym bag, out the door"],["session","Full session: full body"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and rinse off while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["rinse","Quick rinse while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     var err=[["list","Buy everything on Friday's list"],["snacks","Restock: drinkable yogurts, bananas, nuts, eggs, bread, milk, peanut butter, ground beef, rice"]];
     if(c.nth===1) err.push(["restock","Restock cleaning and hygiene supplies","Monthly"]);
@@ -885,7 +885,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=18;
+var APP_VERSION=19;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
