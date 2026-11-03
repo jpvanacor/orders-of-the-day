@@ -33,6 +33,7 @@ public class WakeAlarmPlugin extends Plugin {
         }
         long[] kept = new long[k];
         System.arraycopy(times, 0, kept, 0, k);
+        WakeAlarm.saveNote(getContext(), call.getString("note", ""));
         WakeAlarm.save(getContext(), enabled, practice, kept);
         call.resolve(status());
     }
@@ -104,6 +105,7 @@ public class WakeAlarmPlugin extends Plugin {
         r.put("practice", WakeAlarm.isPractice(c));
         r.put("next", WakeAlarm.next(c));
         r.put("workAt", WakeAlarm.workAt(c));
+        r.put("wakeLog", WakeAlarm.wakeLog(c));
         r.put("ringing", WakeAlarm.isRinging(c));
         r.put("exact", WakeAlarm.canExact(c));
         r.put("fullScreen", WakeAlarm.canFullScreen(c));

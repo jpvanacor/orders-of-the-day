@@ -42,6 +42,7 @@ public class WakeAlarmService extends Service {
         @Override
         public void run() {
             boolean wake = !WakeAlarm.KIND_WORK.equals(kind);
+            if (wake) WakeAlarm.logWake(WakeAlarmService.this, "timeout");
             stopRinging();
             if (wake) postMissed(WakeAlarmService.this);
             stopSelf();

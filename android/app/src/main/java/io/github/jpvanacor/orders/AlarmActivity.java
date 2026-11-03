@@ -59,6 +59,7 @@ public class AlarmActivity extends Activity {
     private boolean stopped;
     private boolean fallbackShown;
     private volatile boolean loaded;
+    private volatile String stopHow = "scan";
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     /** Close the screen when the ringing ended some other way (the one-hour limit). */
@@ -246,7 +247,10 @@ public class AlarmActivity extends Activity {
         stop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (practice || WakeAlarm.sentenceMatches(input.getText().toString())) stopAlarm();
+                if (practice || WakeAlarm.sentenceMatches(input.getText().toString())) {
+                    stopHow = practice ? "practice" : "sentence";
+                    stopAlarm();
+                }
                 else Toast.makeText(AlarmActivity.this, "Type the sentence exactly", Toast.LENGTH_SHORT).show();
             }
         });
@@ -351,6 +355,8 @@ public class AlarmActivity extends Activity {
                 o.put("sentence", WakeAlarm.SENTENCE);
                 o.put("test", WakeAlarm.isTest(AlarmActivity.this));
                 o.put("practice", WakeAlarm.isPractice(AlarmActivity.this));
+                o.put("deadline", WakeAlarm.deadline(AlarmActivity.this));
+                o.put("note", WakeAlarm.note(AlarmActivity.this));
             } catch (JSONException ignored) {
                 // stays empty
             }
@@ -360,6 +366,7 @@ public class AlarmActivity extends Activity {
         @JavascriptInterface
         public boolean check(String text) {
             if (!WakeAlarm.matches(text)) return false;
+            stopHow = "scan";
             runOnUiThread(stopper);
             return true;
         }
@@ -372,6 +379,7 @@ public class AlarmActivity extends Activity {
         @JavascriptInterface
         public boolean practice() {
             if (!WakeAlarm.isPractice(AlarmActivity.this)) return false;
+            stopHow = "practice";
             runOnUiThread(stopper);
             return true;
         }
@@ -379,6 +387,7 @@ public class AlarmActivity extends Activity {
         @JavascriptInterface
         public boolean escape(String text) {
             if (!WakeAlarm.sentenceMatches(text)) return false;
+            stopHow = "sentence";
             runOnUiThread(stopper);
             return true;
         }
@@ -406,6 +415,7 @@ public class AlarmActivity extends Activity {
     private void stopAlarm() {
         if (stopped) return;
         stopped = true;
+        WakeAlarm.logWake(this, stopHow);
         stopService(new Intent(this, WakeAlarmService.class));
         WakeAlarm.markRinging(this, false, false);
         android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);

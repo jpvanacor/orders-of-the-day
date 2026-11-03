@@ -13,6 +13,7 @@ public class WakeAlarmReceiver extends BroadcastReceiver {
         if (WakeAlarm.ACTION_STOP.equals(action)) {
             // Offered for the work timer, and for the wake alarm only on practice mornings.
             if (WakeAlarm.KIND_WORK.equals(WakeAlarm.ringKind(context)) || WakeAlarm.isPractice(context)) {
+                if (WakeAlarm.isRinging(context)) WakeAlarm.logWake(context, "practice");
                 context.stopService(new Intent(context, WakeAlarmService.class));
                 WakeAlarm.markRinging(context, false, false);
                 NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);

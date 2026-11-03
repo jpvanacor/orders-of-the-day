@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Locale;
 
 /**
@@ -38,6 +40,10 @@ final class WakeAlarm {
 
     static SharedPreferences prefs(Context c) {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    static void saveNote(Context c, String note) {
+        prefs(c).edit().putString("note", note == null ? "" : note).apply();
     }
 
     static void save(Context c, boolean enabled, boolean practice, long[] times) {
@@ -185,6 +191,48 @@ final class WakeAlarm {
     static boolean isRinging(Context c) {
         SharedPreferences p = prefs(c);
         return p.getBoolean("ringing", false) && System.currentTimeMillis() - p.getLong("ringStart", 0) < limitFor(ringKind(c)) + 60000;
+    }
+
+    /**
+     * How each real wake alarm ended, newest first, for the wake ladder in the app:
+     * "day|ringStart|stopAt|how" joined by ';', how = scan, sentence, practice, timeout. Tests are not logged.
+     */
+    static void logWake(Context c, String how) {
+        SharedPreferences p = prefs(c);
+        if (KIND_WORK.equals(ringKind(c)) || p.getBoolean("ringTest", false)) return;
+        long start = p.getLong("ringStart", 0);
+        if (start <= 0) return;
+        String day = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date(start));
+        String entry = day + "|" + start + "|" + System.currentTimeMillis() + "|" + how;
+        String old = p.getString("wakeLog", "");
+        StringBuilder sb = new StringBuilder(entry);
+        int kept = 0;
+        if (old != null && !old.isEmpty()) {
+            for (String e : old.split(";")) {
+                if (e.isEmpty() || e.startsWith(day + "|") || kept >= 13) continue;
+                sb.append(';').append(e);
+                kept++;
+            }
+        }
+        p.edit().putString("wakeLog", sb.toString()).apply();
+    }
+
+    static String wakeLog(Context c) {
+        String s = prefs(c).getString("wakeLog", "");
+        return s == null ? "" : s;
+    }
+
+    /** A line from the app for the alarm screen, like how far the next win moves the alarm. */
+    static String note(Context c) {
+        String s = prefs(c).getString("note", "");
+        return s == null ? "" : s;
+    }
+
+    /** Scanning by this minute counts as a win: ten minutes after it started ringing. */
+    static String deadline(Context c) {
+        long start = prefs(c).getLong("ringStart", 0);
+        if (start <= 0) return "";
+        return new SimpleDateFormat("HH:mm", Locale.ROOT).format(new Date(start + 10L * 60L * 1000L));
     }
 
     static boolean isTest(Context c) {

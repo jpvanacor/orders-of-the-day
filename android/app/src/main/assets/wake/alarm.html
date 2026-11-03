@@ -24,6 +24,7 @@ body{display:flex;flex-direction:column;min-height:100%;padding:max(18px,env(saf
 .clock{font:600 2.6rem/1 var(--font-mono);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 h1{margin:.55rem 0 .2rem;font:800 3.1rem/.92 var(--font-display);text-transform:uppercase;letter-spacing:.01em}
 .sub{margin:0;color:var(--muted);font-size:1.02rem}
+.win{margin:.55rem 0 0;padding:.55rem .7rem;border-left:3px solid var(--accent);background:var(--surface);font:700 .95rem/1.35 var(--font-body)}
 .view{position:relative;flex:1 1 auto;min-height:15rem;margin:1rem 0 .75rem;border-radius:10px;overflow:hidden;background:#05080A;border:1px solid var(--line)}
 video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .frame{position:absolute;left:50%;top:50%;width:min(62%,15rem);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:14px;box-shadow:0 0 0 999px rgba(5,8,10,.38)}
@@ -55,6 +56,7 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 <div class="top"><span class="kicker" id="kicker">Wake alarm</span><span class="clock" id="clock">06:45</span></div>
 <h1 id="title">Shower first.</h1>
 <p class="sub">Go to the bathroom and point the camera at the code by the shower. That stops the alarm.</p>
+<p class="win" id="win" hidden></p>
 <div class="view" id="view">
   <video id="video" playsinline muted autoplay></video>
   <div class="frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -82,6 +84,7 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   function norm(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();}
   if(info.test){$("kicker").textContent="Test alarm";}
   if(info.practice){$("practice").hidden=false;}
+  if(info.deadline&&!info.test){$("win").textContent="Scan by "+info.deadline+" to count as a win."+(info.note?" "+info.note:"");$("win").hidden=false;}
   $("sentence").textContent=SENTENCE;
   function clock(){var d=new Date();$("clock").textContent=pad(d.getHours())+":"+pad(d.getMinutes());}
   clock();setInterval(clock,1000);
