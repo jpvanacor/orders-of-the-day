@@ -168,6 +168,29 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .ladder-hist b{font-weight:600}
 .ladder-hist .w{color:var(--cat-body)}
 .ladder-hist .m{color:var(--urgent)}
+#focusRow{cursor:pointer}
+body.fp-open{overflow:hidden}
+.fpage{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;color:#F3F6F9;background:linear-gradient(var(--sky1,#0B1630),var(--sky2,#1E2F57) 70%);padding:calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 16px)}
+.fp-top{display:flex;align-items:center;justify-content:space-between}
+.fp-k{font:700 .74rem/1 var(--font-body);letter-spacing:.16em;text-transform:uppercase;opacity:.85}
+.fp-x{appearance:none;border:1px solid rgba(243,246,249,.35);background:rgba(11,22,48,.25);color:inherit;width:2.4rem;height:2.4rem;border-radius:50%;font:400 1.5rem/1 var(--font-body);cursor:pointer}
+.fp-clock{display:flex;flex-direction:column;align-items:center;gap:.35rem;margin-top:.6rem;text-align:center}
+.fp-time{font:600 3.6rem/1 var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em;text-shadow:0 2px 12px rgba(0,0,0,.25)}
+.fp-sub{font:700 .82rem/1.3 var(--font-body);letter-spacing:.08em;text-transform:uppercase;opacity:.9}
+.fp-scene{flex:1;min-height:12rem;display:flex;align-items:flex-end;margin:.6rem -16px 0}
+.fp-scene svg{display:block;width:100%;height:100%;max-height:30rem}
+.fp-stats{margin:0;padding:.7rem 0 .2rem;text-align:center;font:500 .85rem/1.35 var(--font-mono);color:#C9D3DC;background:#141C24;margin-left:-16px;margin-right:-16px}
+.fp-btns{display:flex;gap:.6rem;padding-top:.8rem;background:#141C24;margin:0 -16px -16px;padding:.8rem 16px calc(env(safe-area-inset-bottom,0px) + 16px)}
+.fp-btn{flex:1;appearance:none;border:1px solid rgba(243,246,249,.35);background:transparent;color:#F3F6F9;border-radius:999px;padding:.95rem;font:700 .82rem/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.fp-btn.primary{background:#F3F6F9;color:#0E1317;border-color:#F3F6F9}
+.fp-btn[hidden]{display:none}
+.fp-hook{animation:fpSwing 3.2s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 0}
+.fp-blink{animation:fpBlink 1.6s steps(2,start) infinite}
+.fp-star{animation:fpTwinkle 3s ease-in-out infinite}
+@keyframes fpSwing{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes fpBlink{to{visibility:hidden}}
+@keyframes fpTwinkle{0%,100%{opacity:.9}50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.fp-hook,.fp-blink,.fp-star{animation:none}}
 .earlier{margin-top:.75rem;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:.75rem .85rem .3rem}
 .earlier-h{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin:0}
 .earlier-h .k{font:700 .72rem/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -503,6 +526,13 @@ details .checks{margin-top:.3rem}
   <button type="button" id="tab-plan">Plan</button>
 </nav>
 
+<section class="fpage" id="focusPage" aria-label="Focus" hidden>
+  <div class="fp-top"><span class="fp-k" id="fpKicker">Focus</span><button type="button" class="fp-x" id="fpClose" aria-label="Close">&#215;</button></div>
+  <div class="fp-clock"><span class="fp-time" id="fpTime"></span><span class="fp-sub" id="fpSub"></span></div>
+  <div class="fp-scene" id="fpScene" aria-hidden="true"></div>
+  <p class="fp-stats" id="fpStats"></p>
+  <div class="fp-btns"><button type="button" class="fp-btn" id="fpStop">Stop</button><button type="button" class="fp-btn primary" id="fpGo">Start</button></div>
+</section>
 <script id="logic">
 "use strict";
 var TRAIN_DAYS=[1,2,3,4,5];
@@ -921,7 +951,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=21;
+var APP_VERSION=22;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -1550,6 +1580,7 @@ function focusAdvance(nowMs){
   while(focus&&nowMs>=focus.phaseEnd&&guard++<60){
     var nx=focusStep(focus,focus);
     at=focus.phaseEnd;
+    if(focus.phase==="focus") logFocus(focus.phaseStart,focus.phaseEnd,focus.cat,true);
     if(!nx){focus=null;ev="finished";break;}
     focus.phase=nx.phase;focus.phaseStart=nx.phaseStart;focus.phaseEnd=nx.phaseEnd;focus.done=nx.done;focus.n=nx.n;
     ev=nx.phase==="break"?"break":"next";
@@ -1585,6 +1616,7 @@ function renderFocus(now,r){
   $("focusGo").textContent=go==="Skip"?"Skip":"Start";
   $("focusStop").hidden=!focus;
   $("focusStop").textContent=Date.now()<focusArm?"Sure?":"Stop";
+  row.setAttribute("aria-label",focus?"Focus sessions, tap to open":"Focus sessions");
   $("focusBar").style.width=(Math.max(0,Math.min(1,p))*100).toFixed(2)+"%";
 }
 function startFocus(){
@@ -1599,13 +1631,136 @@ function startFocus(){
     focus.n=focus.done+sp.n;focus.phase="focus";focus.phaseStart=nowMs;focus.phaseEnd=nowMs+sp.f;
   }
   focusArm=0;saveFocus();sfx("toggle");renderFocus(now,r);scheduleSoon(true);
+  if(fp.open) renderFocusPage(now); else openFocusPage(true);
 }
 function stopFocus(){
   if(!focus) return;
   var n=Date.now(),now=new Date();
   if(n>focusArm){focusArm=n+3000;sfx("tap");renderFocus(now,findNow(now,settings));return;}
+  if(focus.phase==="focus"&&n-focus.phaseStart>=60000) logFocus(focus.phaseStart,n,focus.cat,false);
   focusArm=0;focus=null;saveFocus();sfx("uncheck");
   renderFocus(now,findNow(now,settings));scheduleSoon(true);
+  if(fp.open) renderFocusPage(now);
+}
+
+/* Focus page: while you focus, a building goes up floor by floor (one floor about every 5 minutes).
+   Finished sessions stay in today's skyline; a stopped one stays half built. */
+var FL_KEY="ood.focuslog.v1",focusLog=load(FL_KEY,null)||{},fp={open:false};
+(function(){var cut=ymd(addDays(new Date(),-30));Object.keys(focusLog).forEach(function(k){if(k<cut) delete focusLog[k];});})();
+function logFocus(start,end,cat,done){
+  var k=ymd(new Date(start)),a=focusLog[k]||(focusLog[k]=[]);
+  if(a.some(function(x){return x.s===start;})) return;
+  a.push({s:start,e:end,c:cat,d:done?1:0});
+  save(FL_KEY,focusLog);
+}
+function seeded(seed){var t=(seed>>>0)||1;return function(){t+=0x6D2B79F5;var r=Math.imul(t^(t>>>15),1|t);r^=r+Math.imul(r^(r>>>7),61|r);return ((r^(r>>>14))>>>0)/4294967296;};}
+function skyFor(h){
+  if(h>=8&&h<17) return ["#2F6FB0","#9CC9EE","day"];
+  if(h>=6&&h<8) return ["#3B4F86","#E9A98B","dawn"];
+  if(h>=17&&h<19) return ["#3A2E6E","#E58A62","dusk"];
+  return ["#0B1630","#1E2F57","night"];
+}
+var CAT_HEX={work:"#AEB8C4",study:"#8AAEFF"};
+function buildingSVG(x,base,w,hgt,floors,p,rnd,o){
+  /* o: {lit, unlit, body, roof, small, scaffold, crane, done} */
+  var out="",fh=hgt/floors,cols=w>=80?4:w>=50?3:2,built=Math.floor(p*floors+1e-6),part=p*floors-built,top=base-p*hgt;
+  var ww=Math.max(2,(w-8)/cols*.46),gap=(w-8)/cols;
+  for(var i=0;i<built;i++){
+    var y=base-(i+1)*fh;
+    out+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+(fh+.6).toFixed(1)+'" fill="'+o.body+'"/>';
+    for(var c=0;c<cols;c++){
+      var on=o.done||rnd()<.82;
+      out+='<rect x="'+(x+4+c*gap+(gap-ww)/2).toFixed(1)+'" y="'+(y+fh*.28).toFixed(1)+'" width="'+ww.toFixed(1)+'" height="'+(fh*.44).toFixed(1)+'" fill="'+(on?o.lit:o.unlit)+'"/>';
+    }
+  }
+  if(part>.02&&!o.done){
+    var ph=part*fh,py=base-built*fh-ph;
+    out+='<rect x="'+x.toFixed(1)+'" y="'+py.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+ph.toFixed(1)+'" fill="none" stroke="'+o.scaffold+'" stroke-width="1.4" stroke-dasharray="3 3"/>';
+    for(var s=1;s<cols;s++) out+='<line x1="'+(x+s*w/cols).toFixed(1)+'" y1="'+py.toFixed(1)+'" x2="'+(x+s*w/cols).toFixed(1)+'" y2="'+(py+ph).toFixed(1)+'" stroke="'+o.scaffold+'" stroke-width="1"/>';
+  }
+  if(built>0) out+='<rect x="'+(x-1).toFixed(1)+'" y="'+(base-built*fh-2).toFixed(1)+'" width="'+(w+2).toFixed(1)+'" height="3" fill="'+o.roof+'"/>';
+  if(o.done&&!o.small){
+    var ax=x+w*.7;
+    out+='<line x1="'+ax.toFixed(1)+'" y1="'+(top-2).toFixed(1)+'" x2="'+ax.toFixed(1)+'" y2="'+(top-26).toFixed(1)+'" stroke="'+o.roof+'" stroke-width="2"/>';
+    out+='<circle class="fp-blink" cx="'+ax.toFixed(1)+'" cy="'+(top-28).toFixed(1)+'" r="3" fill="#FF6B5B"/>';
+  }
+  if(o.crane){
+    var mx=x+w-10,my=Math.min(top,base-6),mt=my-58,jl=x-26;
+    out+='<g stroke="#F2C14E" stroke-width="2.4" fill="none"><line x1="'+mx+'" y1="'+my+'" x2="'+mx+'" y2="'+mt+'"/><line x1="'+(jl)+'" y1="'+(mt+6)+'" x2="'+(mx+18)+'" y2="'+(mt+6)+'"/>'+
+      '<line x1="'+mx+'" y1="'+mt+'" x2="'+(jl+6)+'" y2="'+(mt+6)+'" stroke-width="1"/><line x1="'+mx+'" y1="'+mt+'" x2="'+(mx+16)+'" y2="'+(mt+6)+'" stroke-width="1"/></g>'+
+      '<rect x="'+(mx+12)+'" y="'+(mt+6)+'" width="8" height="8" fill="#F2C14E"/>'+
+      '<g class="fp-hook"><line x1="'+(jl+14)+'" y1="'+(mt+6)+'" x2="'+(jl+14)+'" y2="'+(mt+34)+'" stroke="#E6ECF0" stroke-width="1"/><rect x="'+(jl+9)+'" y="'+(mt+34)+'" width="10" height="7" fill="#C9D3DC"/></g>';
+  }
+  return out;
+}
+function renderFocusPage(now){
+  if(!fp.open) return;
+  var nowMs=now.getTime(),k=ymd(now),log=(focusLog[k]||[]).slice().sort(function(a,b){return a.s-b.s;}),r=findNow(now,settings);
+  if(focus&&(focus.day!==k||nowMs>=focus.end)) focus=null;
+  var sky=skyFor(now.getHours()),page=$("focusPage");
+  page.style.setProperty("--sky1",sky[0]);page.style.setProperty("--sky2",sky[1]);
+  var W=360,H=380,G=342,svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">';
+  if(sky[2]==="night"||sky[2]==="dusk"){var sr=seeded(+k.replace(/-/g,""));for(var st=0;st<26;st++) svg+='<circle class="fp-star" style="animation-delay:'+(sr()*3).toFixed(2)+'s" cx="'+(sr()*W).toFixed(1)+'" cy="'+(sr()*170).toFixed(1)+'" r="'+(sr()*1.2+.4).toFixed(1)+'" fill="#FFFFFF" opacity=".8"/>';}
+  var night=sky[2]==="night",lit=night?"#FFD27A":"#FFE7A8",unlit=night?"rgba(255,255,255,.12)":"rgba(255,255,255,.3)";
+  /* today's skyline, behind */
+  var past=focus&&focus.phase!=="focus"?log.slice(0,-1):log,n=past.length,slot=n?Math.min(64,(W-24)/n):0;
+  past.forEach(function(x,i){
+    var rnd=seeded(x.s),mins=(x.e-x.s)/60000,w=26+rnd()*16,hh=Math.max(36,Math.min(170,mins*2.9)),bx=12+i*slot+(slot-w)/2;
+    if(n===1) bx=24;
+    var floors=Math.max(3,Math.round(mins/5));
+    svg+='<g opacity="'+(x.d?.92:.5)+'">'+buildingSVG(bx,G,w,hh,floors,1,rnd,{lit:x.d?lit:unlit,unlit:unlit,body:"#26313D",roof:CAT_HEX[x.c]||"#AEB8C4",small:true,scaffold:"#8796A5",done:!!x.d})+'</g>';
+  });
+  /* the building going up now */
+  var kick="Focus",time="",sub="",stopOn=false,goTxt="",showGo=false;
+  if(focus&&focus.phase==="focus"){
+    var tot=focus.phaseEnd-focus.phaseStart,p=Math.max(0,Math.min(1,(nowMs-focus.phaseStart)/tot)),mins=tot/60000,rnd=seeded(focus.phaseStart);
+    var w=88+rnd()*30,hh=Math.max(120,Math.min(262,mins*4.7)),floors=Math.max(3,Math.min(14,Math.round(mins/5)));
+    svg+=buildingSVG((W-w)/2,G,w,hh,floors,p,rnd,{lit:lit,unlit:unlit,body:"#33404E",roof:CAT_HEX[focus.cat]||"#AEB8C4",scaffold:"#F2C14E",crane:true});
+    kick="Focus · "+(focus.done+1)+" of "+focus.n;time=fmtClock(focus.phaseEnd-nowMs).replace(/^0:/,"");
+    sub=(focus.done+1>=focus.n?"Last one, until ":"Break at ")+hhmm(new Date(focus.phaseEnd));stopOn=true;
+  } else if(focus){
+    var last=log[log.length-1];
+    if(last){var rl=seeded(last.s),ml=(last.e-last.s)/60000,wl=88+rl()*30,hl=Math.max(120,Math.min(262,ml*4.7));
+      svg+=buildingSVG((W-wl)/2,G,wl,hl,Math.max(3,Math.min(14,Math.round(ml/5))),1,rl,{lit:lit,unlit:unlit,body:"#33404E",roof:CAT_HEX[last.c]||"#AEB8C4",done:true});}
+    kick="Break";time=fmtClock(focus.phaseEnd-nowMs).replace(/^0:/,"");sub="Get up and walk. Session "+(focus.done+1)+" of "+focus.n+" starts by itself.";
+    stopOn=true;showGo=true;goTxt="Skip break";
+  } else {
+    var offer=focusOffer(r,nowMs);
+    kick="Focus";time=offer?offer.n+" × "+Math.round(offer.f/60000):"";
+    sub=offer?"minutes, 5-minute breaks, until "+hhmm(new Date(offer.end)):"No long block right now";
+    showGo=!!offer;goTxt="Start";
+  }
+  svg+='<rect x="0" y="'+G+'" width="'+W+'" height="'+(H-G)+'" fill="#141C24"/></svg>';
+  $("fpScene").innerHTML=svg;
+  $("fpKicker").textContent=kick;
+  $("fpTime").textContent=time;
+  $("fpSub").textContent=sub;
+  var done=log.filter(function(x){return x.d;}),minsDone=Math.round(done.reduce(function(a,x){return a+(x.e-x.s);},0)/60000);
+  $("fpStats").textContent=done.length?"Today: "+done.length+(done.length===1?" building · ":" buildings · ")+(minsDone<60?minsDone+" min":fmtLen(minsDone))+" of focus":"Today's skyline is empty. Every finished session adds a building.";
+  $("fpStop").hidden=!stopOn;
+  $("fpStop").textContent=Date.now()<focusArm?"Sure?":"Stop";
+  $("fpGo").hidden=!showGo;
+  $("fpGo").textContent=goTxt||"Start";
+}
+function openFocusPage(push){
+  if(fp.open) return;
+  fp.open=true;
+  $("focusPage").hidden=false;
+  document.body.classList.add("fp-open");
+  if(push){try{history.pushState({fp:1},"","#focus");}catch(e){}}
+  renderFocusPage(new Date());
+}
+function hideFocusPage(){
+  if(!fp.open) return;
+  fp.open=false;
+  $("focusPage").hidden=true;
+  document.body.classList.remove("fp-open");
+}
+function closeFocusPage(){
+  if(!fp.open) return;
+  if(history.state&&history.state.fp){try{history.back();return;}catch(e){}}
+  hideFocusPage();
+  try{history.replaceState(null,"","#"+state.view);}catch(e){}
 }
 
 /* Water: a cup about every hour, logged with + Cup. */
@@ -1714,6 +1869,7 @@ function renderAll(now,animate){
   renderWater(now,false);
   focusAdvance(now.getTime());
   renderFocus(now,r);
+  if(fp.open) renderFocusPage(now);
   earlier.all=false;
   renderEarlier(now);
   state.lastKey=r?r.block.day+"/"+r.block.key:"";
@@ -1755,6 +1911,7 @@ function tick(){
     if(now.getSeconds()===0) renderWater(now,false);
     var fa=focusAdvance(now.getTime());
     renderFocus(now,r);
+    if(fp.open) renderFocusPage(now);
     if(fa){
       if(!fa.late&&!document.hidden){
         if(fa.ev==="break"){sfx("block");var fr=$("focusRow");if(!fr.hidden) burst(center(fr).x,center(fr).y,["var(--cat-home)"],10,{power:60,gravity:20,size:6});}
@@ -1797,8 +1954,13 @@ $("wtStart").addEventListener("click",startTimer);
 $("waterAdd").addEventListener("click",addCup);
 $("earlierList").addEventListener("change",earlierTicked);
 $("earlierMore").addEventListener("click",function(){earlier.all=true;sfx("tap");renderEarlier(new Date());});
-$("focusGo").addEventListener("click",startFocus);
-$("focusStop").addEventListener("click",stopFocus);
+$("focusGo").addEventListener("click",function(e){e.stopPropagation();startFocus();});
+$("focusStop").addEventListener("click",function(e){e.stopPropagation();stopFocus();});
+$("focusRow").addEventListener("click",function(){sfx("tap");openFocusPage(true);});
+$("fpClose").addEventListener("click",function(){sfx("tap");closeFocusPage();});
+$("fpGo").addEventListener("click",startFocus);
+$("fpStop").addEventListener("click",stopFocus);
+window.addEventListener("popstate",function(){if(fp.open&&location.hash!=="#focus") hideFocusPage();});
 $("waterUndo").addEventListener("click",undoCup);
 $("wtPause").addEventListener("click",pauseOrResume);
 $("wtStop").addEventListener("click",stopTimer);
@@ -2183,6 +2345,7 @@ save(S_KEY,settings);
 save(C_KEY,checks);
 renderAll(new Date(),false);
 show((location.hash||"").replace("#",""),false);
+if(location.hash==="#focus") openFocusPage(false);
 requestWake();
 setInterval(tick,1000);
 })();
