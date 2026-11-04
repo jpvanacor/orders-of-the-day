@@ -227,7 +227,7 @@ public class WakeAlarmService extends Service {
         Notification.Builder b = builder(c, fallback ? CHANNEL_FALLBACK : CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_orders)
             .setColor(0xFF1E5BD0)
-            .setContentTitle(work ? "Work time done" : test ? "Test alarm: shower first" : "Wake up. Shower first.")
+            .setContentTitle(work ? "Work time done" : test ? "Test alarm" : "Wake up.")
             .setContentText(work ? "Stop the alarm, write tomorrow's top 3, close everything." : "Scan the code by the shower to stop it.")
             .setCategory(Notification.CATEGORY_ALARM)
             .setVisibility(Notification.VISIBILITY_PUBLIC)

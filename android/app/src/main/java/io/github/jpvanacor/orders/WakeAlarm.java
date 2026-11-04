@@ -19,7 +19,7 @@ import java.util.Locale;
 final class WakeAlarm {
     static final String PREFS = "orders_wake";
     static final String CODE = "ORDERS-SHOWER-39FC9E7E";
-    static final String SENTENCE = "I am awake and I am going to shower now";
+    static final String SENTENCE = "I am awake and I am getting out of bed";
     static final String ACTION_FIRE = "io.github.jpvanacor.orders.WAKE_FIRE";
     static final String ACTION_STOP = "io.github.jpvanacor.orders.WAKE_STOP";
     static final String EXTRA_TEST = "test";

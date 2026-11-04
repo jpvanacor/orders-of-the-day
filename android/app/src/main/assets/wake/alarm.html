@@ -54,7 +54,7 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 </head>
 <body>
 <div class="top"><span class="kicker" id="kicker">Wake alarm</span><span class="clock" id="clock">06:45</span></div>
-<h1 id="title">Shower first.</h1>
+<h1 id="title">Wake up.</h1>
 <p class="sub">Go to the bathroom and point the camera at the code by the shower. That stops the alarm.</p>
 <p class="win" id="win" hidden></p>
 <div class="view" id="view">
@@ -71,14 +71,14 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   <input id="typed" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" aria-label="Type the sentence">
   <button type="button" class="stop" id="stop" disabled>Stop the alarm</button>
 </div>
-<div class="done" id="done" hidden><b>Good.</b><span id="doneText">Into the shower.</span></div>
+<div class="done" id="done" hidden><b>Good.</b><span id="doneText">You're up.</span></div>
 <script src="jsQR.js"></script>
 <script>
 (function(){
   "use strict";
   var A=window.Alarm||null,info={};
   try{info=JSON.parse(A?A.info():"{}")||{};}catch(e){info={};}
-  var SENTENCE=info.sentence||"I am awake and I am going to shower now";
+  var SENTENCE=info.sentence||"I am awake and I am getting out of bed";
   function $(id){return document.getElementById(id);}
   function pad(n){return (n<10?"0":"")+n;}
   function norm(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();}
@@ -125,7 +125,7 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
     if(!code||!code.data) {if(Date.now()>badUntil) status("Looking for the code");return;}
     var ok=false;
     try{ok=A?!!A.check(code.data):false;}catch(e){ok=false;}
-    if(ok){finish("Into the shower.");return;}
+    if(ok){finish("You're up.");return;}
     badUntil=Date.now()+2500;
     status("That's not your code. Scan the one by the shower.",true);
   }
@@ -140,12 +140,12 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   $("stop").addEventListener("click",function(){
     var ok=false;
     try{ok=A?!!A.escape($("typed").value):false;}catch(e){ok=false;}
-    if(ok) finish("Now go shower.");
+    if(ok) finish("Now get up.");
   });
   $("practice").addEventListener("click",function(){
     var ok=false;
     try{ok=A?!!A.practice():false;}catch(e){ok=false;}
-    if(ok) finish("Practice done. Now shower.");
+    if(ok) finish("Practice done. You're up.");
   });
   $("light").addEventListener("click",function(){
     var b=this,on=b.getAttribute("aria-pressed")!=="true";

@@ -226,7 +226,7 @@ public class AlarmActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(20), dp(28), dp(20), dp(20));
         TextView title = new TextView(this);
-        title.setText("Wake up. Shower first.");
+        title.setText("Wake up.");
         title.setTextColor(INK);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
         title.setTypeface(Typeface.DEFAULT_BOLD);
