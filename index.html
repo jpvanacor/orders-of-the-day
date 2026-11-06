@@ -422,7 +422,7 @@ details .checks{margin-top:.3rem}
         </div>
       </section>
       <section class="sec" id="scoreSec">
-        <h2>This week <span class="sub-h" id="weekLetter">Week A</span></h2>
+        <h2>This week</h2>
         <div id="planScore"></div>
       </section>
       <section class="sec">
@@ -564,30 +564,6 @@ function holidayName(date){
   return null;
 }
 
-/* Study rotation from the MP-RS Analista (Direito) plan: weeks alternate A and B. */
-var SUBJECTS={
-  pt:["Português","Gramática: sintaxe, concordância, regência, pontuação, crase"],
-  cons:["Direito Constitucional","Lei seca da CF/88"],
-  inst:["Institucional do MP","Lei 8.625/93, Lei Estadual 7.669/82 e resoluções do CNMP"],
-  civ:["Direito Civil","Lei seca: parte geral, prescrição, família, sucessões"],
-  pciv:["Processo Civil","Lei seca: tutela provisória, sentença, execução, recursos"],
-  rlm:["Raciocínio Lógico","Questões AOCP resolvidas passo a passo"],
-  inf:["Informática e LGPD","Office 365, OneDrive, SharePoint, LGPD, assinatura eletrônica"],
-  pen:["Direito Penal","Lei seca: parte geral e crimes contra a administração"],
-  ppen:["Processo Penal","Lei seca: investigação, ANPP, prisões, recursos"]
-};
-var WEEK_A={1:"pt",2:"cons",3:"civ",4:"rlm",5:"pen"},WEEK_B={1:"pt",2:"inst",3:"pciv",4:"inf",5:"ppen"};
-var SPECIAL_SETS=["ECA (Lei 8.069/90)","Maria da Penha (Lei 11.340/06)","Lei de Drogas (11.343/06)","LEP (Lei 7.210/84)","CDC (Lei 8.078/90)",
-  "Estatuto da Pessoa Idosa (10.741/03) e Abuso de Autoridade (13.869/19)","Crimes Hediondos (8.072/90) e Tortura (9.455/97)",
-  "Organização Criminosa (12.850/13) e Lavagem (9.613/98)","Crimes Ambientais (9.605/98) e Política do Meio Ambiente (6.938/81)",
-  "Código Florestal (12.651/12) e Resíduos Sólidos (12.305/10)","Recursos Hídricos (9.433/97) e Estatuto da Cidade (10.257/01)",
-  "Estatuto do Desarmamento (10.826/03) e Contravenções (DL 3.688/41)","Lei 8.137/90, Lei 7.716/89 e Prisão Temporária (7.960/89)",
-  "Crimes de trânsito (CTB) e Estatuto da Pessoa com Deficiência (13.146/15)"];
-var ADMIN_LAWS=["Lei 8.429/92 (improbidade)","Lei 14.133/21 (licitações e contratos)","Lei 9.784/99 (processo administrativo)"];
-var ROTATION_START=new Date(2026,9,26);
-function weekIndex(date){var s=startOfDay(date),mon=addDays(s,-mod(s.getDay()-1,7));return Math.round((mon-ROTATION_START)/6048e5);}
-function weekLetter(date){return mod(weekIndex(date),2)===0?"A":"B";}
-function subjectFor(date){var d=startOfDay(date),map=weekLetter(d)==="A"?WEEK_A:WEEK_B,k=map[d.getDay()];return k?SUBJECTS[k]:null;}
 
 function isOfficeDay(date,settings){
   var dow=date.getDay();
@@ -634,7 +610,7 @@ function dayContext(date,settings){
     trainTomorrow:hasTraining(t),lateTomorrow:lateTomorrow,
     shift:f.sick?0:wakeShift(d,settings),nextShift:t.sick?0:wakeShift(addDays(d,1),settings),
     nextWake:t.sick?"08:30":hm(toMin(lateTomorrow?"07:30":"06:45")+wakeShift(addDays(d,1),settings)),
-    subject:subjectFor(d),week:weekIndex(d),
+
     book:bookOfMonth(d),deep:deepJob(d),qjob:quarterJob(d)};
 }
 
@@ -695,16 +671,10 @@ function dayBlocks(c){
   var hard=[["phone","Phone in the drawer"],["hard","Start with the task that matters most"]];
   var basic=[["counters","Counters"],["trash","Trash out"]];
   var defrostLunch=["defrost","11:50","12:00","meal","Defrost lunch","Put lunch in to defrost, then keep working until 12:00.",[["start","Put lunch in to defrost"]]];
-  var S=c.subject;
-  var studyTitle=S?"Study: "+S[0]:"Study",qTitle=S?"Questions: "+S[0]:"Study: questions";
-  function studyItems(first,withQuestions){
-    var it=[["phone","Phone in the drawer"]];
-    if(first) it.push(["anki","Anki reviews"]);
-    it.push(["read",S?S[1]:"New material"]);
-    if(withQuestions) it.push(["q","AOCP questions on the same topic"]);
-    return it;
-  }
-  var evening=[["phone","Phone in the drawer"],["questions","AOCP questions, same subject as this morning"],["mistakes","Note every mistake"]];
+  /* Study blocks give the time; what to study comes from his own Anki schedule. */
+  var study=[["phone","Phone in the drawer"],["anki","Your Anki schedule"]];
+  var longStudy=study.concat([["breaks","10-minute break each hour"]]);
+  var studyNote="Phone in the drawer. Your Anki schedule.";
 
   /* Sick day: meals, rest and sleep only. */
   if(c.sick){
@@ -723,7 +693,7 @@ function dayBlocks(c){
     var trainH=TRAIN_DAYS.indexOf(c.dow)>=0;
     add("wake",at("07:30"),at("08:00"),"routine","Wake up",(c.holiday?"Holiday: "+c.holiday+". ":"Day off. ")+"Code by the shower, then breakfast."+wakeNote("07:30",s),wakeBase.concat(breakfast));
     if(c.urgent) add("uwork1",at("08:00"),"11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study",at("08:00"),"11:00","study",studyTitle,"Phone in the drawer. Anki first.",studyItems(true,true).concat([["breaks","10-minute break each hour"]]));
+    else add("study",at("08:00"),"11:00","study","Study",studyNote,longStudy);
     if(trainH) add("train","11:00","12:00","body","Gym","1h including travel. The workout is in Fitbod.",[["go","Gym bag, out the door"],["session","Today's Fitbod workout"]]);
     else add("walk","11:00","12:00","body","Walk outside","One hour outdoors. If it rains, 30 minutes of stretching at home.");
     add("lunch","12:00","13:00","meal","Lunch",trainH?"Start the defrost and shower while it runs.":"Start the defrost, then wash up while it runs.",
@@ -733,7 +703,7 @@ function dayBlocks(c){
       add("rest","16:00","18:00","people","Rest","Away from work. People, a book or outside.");
     } else {
       add("off","13:00","16:00","people",c.holiday?"Holiday: "+c.holiday:"Day off","No work. People, outside or rest.",[["zone","First, 10 minutes: "+ZONE[c.dow]]]);
-      add("study2","16:00","18:00","study",qTitle,"Phone in the drawer.",evening);
+      add("study2","16:00","18:00","study","Study",studyNote,study);
     }
     tail("18:00","Dinner and time with people","Defrost first. Dishes right after.",[["defrost","Put dinner in to defrost"],["dishes","Dishes right after"]]);
     return addSnacks(B,c);
@@ -788,14 +758,14 @@ function dayBlocks(c){
       if(wed) sh.push(["hang","Hang the laundry"]);
       add("shower",at("08:15",m),at("08:30",m),"routine","Shower and snack",wed?"Shower, post-workout snack, then hang the laundry.":"Shower and the post-workout snack. Then straight to study.",sh);
     } else {
-      add("early",at("07:15",m),at("08:15",m),"study",studyTitle,"Phone in the drawer. Anki first.",studyItems(true,false));
+      add("early",at("07:15",m),at("08:15",m),"study","Study",studyNote,study);
       var sh2=[["shower","Shower"]];
       if(wed) sh2.push(["hang","Hang the laundry"]);
       add("shower",at("08:15",m),at("08:30",m),"routine","Shower",wed?"Shower, then hang the laundry.":"Then straight to study.",sh2);
     }
     var reset=[["counters","Counters"],["trash","Trash out"],["zone",zone]];
     if(c.office){
-      if(m<30) add("study",at("08:30",m),"09:00","study",studyTitle,"Phone in the drawer.",studyItems(false,false));
+      if(m<30) add("study",at("08:30",m),"09:00","study","Study",studyNote,study);
       add("commute","09:00","10:00","commute","Commute","Anki or an audio class on the way.",[["anki","Anki or an audio class"]]);
       add("work1","10:00","11:50","work","Work","At the office.");
       add.apply(null,defrostLunch);
@@ -809,7 +779,7 @@ function dayBlocks(c){
       if(c.dow===5) tail("21:00","Time with people","Go out or stay in with people.");
       else tail("21:00","Time with people","Or a book. No screens.");
     } else {
-      add("study",at("08:30",m),"10:00","study",studyTitle,train?"Phone in the drawer. Anki first.":"Phone in the drawer. Same subject, keep going.",studyItems(!!train,true));
+      add("study",at("08:30",m),"10:00","study","Study",studyNote,study);
       add("work1","10:00","11:50","work","Work","From home.");
       add.apply(null,defrostLunch);
       var lunch=[["lunch","Lunch away from the desk"],["dishes","Dishes right after"],["teeth","Brush your teeth"],["walk","10-minute walk (rain: move around indoors)"]];
@@ -821,15 +791,14 @@ function dayBlocks(c){
       add("reset","20:00","20:20","home","House reset",zone+".",reset);
       if(c.dow===5) tail("20:20","Time with people","Go out or stay in with people.");
       else {
-        add("study2","20:20","21:20","study",qTitle,"Phone in the drawer. Same subject as this morning.",evening);
+        add("study2","20:20","21:20","study","Study",studyNote,study);
         tail("21:20","Time with people","Or a book. No screens.");
       }
     }
   } else if(c.dow===6){
     add("wake",at("07:30"),at("08:00"),"routine","Wake up","Code by the shower, then breakfast."+wakeNote("07:30",s),wakeBase.concat(breakfast));
     if(c.urgent) add("uwork1",at("08:00"),"11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study",at("08:00"),"11:00","study","Study: Legislação Especial + Administrativo","Phone in the drawer. Anki first.",[["phone","Phone in the drawer"],["anki","Anki reviews"],
-      ["esp","Legislação Especial: "+SPECIAL_SETS[mod(c.week,SPECIAL_SETS.length)]],["adm","Administrativo: "+ADMIN_LAWS[mod(c.week,ADMIN_LAWS.length)]],["breaks","10-minute break each hour"]]);
+    else add("study",at("08:00"),"11:00","study","Study",studyNote,longStudy);
     add("train","11:00","12:00","body","Gym or a walk","Your pick on weekends: the gym (Fitbod), or an hour walking outside.",[["move","Gym, or an hour's walk outside"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and shower while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     var err=[["list","Buy everything on Friday's list"],["snacks","Restock: drinkable yogurts, bananas, nuts, eggs, bread, milk, peanut butter, ground beef, rice"]];
@@ -845,13 +814,13 @@ function dayBlocks(c){
     } else {
       add("cleaning","14:00","15:00","home","Weekly cleaning","Linens, floors, shower.",cl);
       add("reading","15:00","16:00","mind","Reading","Hang the laundry first. This month: "+c.book+".",[["hang","Hang the laundry"],["read","Read the book of the month"]]);
-      add("study2","16:00","18:00","study","Practice exam","25 to 30 mixed AOCP questions, timed.",[["phone","Phone in the drawer"],["exam","25 to 30 mixed AOCP questions, timed"],["mistakes","Note every mistake"]]);
+      add("study2","16:00","18:00","study","Study",studyNote,study);
     }
     tail("18:00","Time with people",c.urgent?"No work tonight.":"No gaming, no series.",c.lastOfMonth?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
   } else {
     add("wake",at("07:30"),at("08:00"),"routine","Wake up","Code by the shower, then breakfast."+wakeNote("07:30",s),wakeBase.concat(breakfast));
     if(c.urgent) add("uwork1",at("08:00"),"11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study",at("08:00"),"11:00","study","Redação","One essay, nothing else.",[["theme","Pick a theme and plan it"],["write","Write the essay"],["fix","Correct it with the grid"],["rewrite","Rewrite the weakest paragraph"]]);
+    else add("study",at("08:00"),"11:00","study","Study",studyNote,longStudy);
     add("walk","11:00","12:00","body","Gym or a walk","Your pick on weekends: the gym (Fitbod), or an hour walking outside.",[["move","Gym, or an hour's walk outside"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and shower while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     if(c.urgent){
@@ -950,7 +919,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=23;
+var APP_VERSION=24;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -1401,7 +1370,6 @@ function renderPlan(now){
     ml.append(li);
   });
   $("bookMonth").textContent=bookOfMonth(now);
-  $("weekLetter").textContent="Study week "+weekLetter(now);
   renderScore($("planScore"),now);
   renderTools();
 }
