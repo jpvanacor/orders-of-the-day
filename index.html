@@ -619,6 +619,8 @@ function dayContext(date,settings){
     weekday:f.weekday,office:isOfficeDay(d,settings),urgent:f.urgent,holiday:f.holiday,off:f.off,sick:f.sick,mark:f.mark,
     nth:Math.ceil(dom/7),lastOfMonth:dom+7>dim,
     trainTomorrow:hasTraining(t),lateTomorrow:lateTomorrow,
+    /* Tomorrow starts with study (not a sick day, not an urgent morning of work): prepare it tonight. */
+    prepTomorrow:!f.sick&&!t.sick&&!t.urgent,
     ladder:f.sick?0:wakeShift(d,settings),shift:morningShift(f,settings),nextShift:morningShift(t,settings),
     nextWake:t.sick?"08:30":hm(toMin(lateTomorrow?"07:30":"06:45")+morningShift(t,settings)),
 
@@ -680,7 +682,17 @@ function dayBlocks(c){
     var it=B[B.length-1].items[2];
     it.at=leave;it.alert="Leave the gym";it.note=GYM.back+" minutes home, then shower.";
   }
-  function tail(start,title,detail,items){
+  /* Evening prep for tomorrow's study: the flashcards and the materials get done at night, so the morning is only study. */
+  var PREP=30;
+  function prep(start){
+    var end=hm(toMin(start)+PREP);
+    add("prep",start,end,"study","Prep tomorrow's study","Make the flashcards and organize the materials, so tomorrow morning is only study.",[["cards","Make tomorrow's flashcards"],["materials","Organize tomorrow's materials"]]);
+    return end;
+  }
+  /* A study block that runs into the evening gives its last half hour to the prep. */
+  function studyEnd(end){return c.prepTomorrow?hm(toMin(end)-PREP):end;}
+  function tail(start,title,detail,items,noPrep){
+    if(c.prepTomorrow&&!noPrep) start=prep(start);
     add("people",start,w[0],"people",title,detail,items);
     add("wind",w[0],w[1],"routine","Wind down","Journal 3 lines. Screens off.",[
       ["journal","Journal 3 lines: what worked, what derailed you, tomorrow's first move"],
@@ -729,9 +741,9 @@ function dayBlocks(c){
       add("rest","16:00","18:00","people","Rest","Away from work. People, a book or outside.");
     } else {
       add("off","13:00","16:00","people",c.holiday?"Holiday: "+c.holiday:"Day off","No work. People, outside or rest.",[["zone","First, 10 minutes: "+ZONE[c.dow]]]);
-      add("study2","16:00","18:00","study","Study",studyNote,study);
+      add("study2","16:00",studyEnd("18:00"),"study","Study",studyNote,study);
     }
-    tail("18:00","Dinner and time with people","Defrost first. Dishes right after.",[["defrost","Put dinner in to defrost"],["dishes","Dishes right after"]]);
+    tail(c.urgent?"18:00":studyEnd("18:00"),"Dinner and time with people","Defrost first. Dishes right after.",[["defrost","Put dinner in to defrost"],["dishes","Dishes right after"]]);
     return addSnacks(B,c);
   }
 
@@ -821,8 +833,8 @@ function dayBlocks(c){
       add("reset","20:00","20:20","home","House reset",zone+".",reset);
       if(c.dow===5) tail("20:20","Time with people","Go out or stay in with people.");
       else {
-        add("study2","20:20","21:20","study","Study",studyNote,study);
-        tail("21:20","Time with people","Or a book. No screens.");
+        add("study2","20:20",studyEnd("21:20"),"study","Study",studyNote,study);
+        tail(studyEnd("21:20"),"Time with people","Or a book. No screens.");
       }
     }
   } else if(c.dow===6){
@@ -844,19 +856,21 @@ function dayBlocks(c){
     } else {
       add("cleaning","14:00","15:00","home","Weekly cleaning","Linens, floors, shower.",cl);
       add("reading","15:00","16:00","mind","Reading","Hang the laundry first. This month: "+c.book+".",[["hang","Hang the laundry"],["read","Read the book of the month"]]);
-      add("study2","16:00","18:00","study","Study",studyNote,study);
+      add("study2","16:00",studyEnd("18:00"),"study","Study",studyNote,study);
     }
-    tail("18:00","Time with people",c.urgent?"No work tonight.":"No gaming, no series.",c.lastOfMonth?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
+    tail(c.urgent?"18:00":studyEnd("18:00"),"Time with people",c.urgent?"No work tonight.":"No gaming, no series.",c.lastOfMonth?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
   } else {
     add("wake",at("07:30"),at("08:10"),"routine","Wake up","Code by the shower, then breakfast."+wakeNote("07:30",s),wakeBase.concat(breakfast));
     if(c.urgent) add("uwork1",at("08:10"),lateGym,"work","Work until "+lateGym,"Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
     else add("study",at("08:10"),lateGym,"study","Study",studyNote,longStudy);
     add("walk",lateGym,"12:00","body","Gym or a walk",weekendMove,[["move","Gym, or an hour's walk outside"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and shower while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
+    /* Sunday: the weekly reset moves half an hour earlier, and Monday's prep follows it, before the call and dinner. */
+    var wk=c.prepTomorrow?"16:30":"17:00",wkEnd=c.prepTomorrow?"18:00":"18:30";
     if(c.urgent){
       add("uwork2","13:00","16:00","work","Work, 3 hours","Stop at 16:00.",[["breaks","10-minute break each hour"],["left","Write down what's left for Monday"]]);
-      add("rest","16:00","17:00","people","Rest","Away from work. People, a book or outside.");
-    } else add("rest","13:00","17:00","people","Time with people and rest","People, a book or outside. No gaming, no series.");
+      add("rest","16:00",wk,"people","Rest","Away from work. People, a book or outside.");
+    } else add("rest","13:00",wk,"people","Time with people and rest","People, a book or outside. No gaming, no series.");
     var rs=[["cook","Cook for Mon–Wed"],["beef","Cook ground beef and rice for the week's 16:00 snacks: portion it, freeze half"],["journal","Read this week's journal"],["score","Read the week score"],["money","Log the week's spending in Central"],["plan","Plan the week in TickTick"],["recycling","Take the recycling out"]];
     if(c.nth===1){rs.push(["bills","Pay bills and check subscriptions","Monthly"]);rs.push(["mmoney","Monthly review: money","Monthly"]);}
     if(c.nth===2){
@@ -867,9 +881,10 @@ function dayBlocks(c){
     }
     if(c.nth===3) rs.push(["digital","Digital cleanup: downloads, photos, backup","Monthly"]);
     if(c.lastOfMonth) rs.push(["mevents","Check next month's birthdays and events","Monthly"]);
-    add("weekly","17:00","18:30","plan","Weekly reset","Cook, review, plan the week.",rs);
+    add("weekly",wk,wkEnd,"plan","Weekly reset","Cook, review, plan the week.",rs);
+    if(c.prepTomorrow) prep(wkEnd);
     add("call","18:30","19:00","people","Call someone","Someone you don't see often. At 18:50, put dinner in to defrost.",[["call","Call someone you don't see often"],["defrost","At 18:50, put dinner in to defrost"]]);
-    tail("19:00","Dinner and time with people","Dishes right after. No screens.",[["dishes","Dishes right after"]]);
+    tail("19:00","Dinner and time with people","Dishes right after. No screens.",[["dishes","Dishes right after"]],true);
   }
   return addSnacks(B,c);
 }
@@ -949,7 +964,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=25;
+var APP_VERSION=26;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
