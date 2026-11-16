@@ -536,6 +536,8 @@ details .checks{margin-top:.3rem}
 <script id="logic">
 "use strict";
 var TRAIN_DAYS=[1,2,3,4,5];
+/* The gym is 10 minutes from home: the block is the trip there, the Fitbod workout and the trip back. */
+var GYM={there:10,train:45,back:10};
 var ZONE={1:"Quick bathroom clean: sink, toilet, mirror",2:"Sweep or vacuum every room",3:"Deep-clean the kitchen: stove, microwave, sink",4:"Fold and put away the laundry, tidy the bedroom",5:"Throw out anything old in the fridge and write the grocery list"};
 function pad(n){return String(n).padStart(2,"0");}
 function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
@@ -601,6 +603,15 @@ function wakeShift(d,settings){
   v=Math.round((+v||0)/5)*5;
   return Math.max(0,Math.min(60,v));
 }
+/* Office mornings end at 09:00 sharp (the commute), so there the ladder stops at 07:00.
+   Everything that depends on the wake time (the alarm, "Wake at", bedtime the night before) uses this. */
+var OFFICE_CAP=15;
+function morningShift(f,settings){
+  if(f.sick) return 0;
+  var v=wakeShift(f.d,settings);
+  if(f.weekday&&!f.off&&isOfficeDay(f.d,settings)) v=Math.min(v,f.urgent?30:OFFICE_CAP);
+  return v;
+}
 function dayContext(date,settings){
   var f=dayFlags(date,settings),d=f.d,dom=d.getDate(),dim=daysInMonth(d),t=dayFlags(addDays(d,1),settings);
   var lateTomorrow=t.sick||t.off||t.dow===0||t.dow===6;
@@ -608,8 +619,8 @@ function dayContext(date,settings){
     weekday:f.weekday,office:isOfficeDay(d,settings),urgent:f.urgent,holiday:f.holiday,off:f.off,sick:f.sick,mark:f.mark,
     nth:Math.ceil(dom/7),lastOfMonth:dom+7>dim,
     trainTomorrow:hasTraining(t),lateTomorrow:lateTomorrow,
-    shift:f.sick?0:wakeShift(d,settings),nextShift:t.sick?0:wakeShift(addDays(d,1),settings),
-    nextWake:t.sick?"08:30":hm(toMin(lateTomorrow?"07:30":"06:45")+wakeShift(addDays(d,1),settings)),
+    ladder:f.sick?0:wakeShift(d,settings),shift:morningShift(f,settings),nextShift:morningShift(t,settings),
+    nextWake:t.sick?"08:30":hm(toMin(lateTomorrow?"07:30":"06:45")+morningShift(t,settings)),
 
     book:bookOfMonth(d),deep:deepJob(d),qjob:quarterJob(d)};
 }
@@ -654,7 +665,21 @@ function dayBlocks(c){
   var w=c.lateTomorrow?["23:15","23:30","23:45"]:[hm(toMin("22:15")+ns),hm(toMin("22:30")+ns),hm(toMin("22:45")+ns)];
   var s=c.shift||0;
   function at(t,m){return hm(toMin(t)+(m==null?s:m));}
-  function wakeNote(goal,m){return m?" Ladder: "+m+" minutes after the "+goal+" goal.":"";}
+  function wakeNote(goal,m){
+    /* Office mornings: the ladder can be higher than what still gets you out at 09:00. */
+    if(c.office&&(c.ladder||0)>m) return " Ladder: "+c.ladder+" minutes after the "+goal+" goal, but office days stop at "+at(goal,m)+" so you leave at 09:00.";
+    return m?" Ladder: "+m+" minutes after the "+goal+" goal.":"";
+  }
+  /* The gym: the trip there, the workout, the trip back, and an alert when it's time to leave. */
+  var gymLen=GYM.there+GYM.train+GYM.back,gymTrip=GYM.there+" min there, "+GYM.train+" min of Fitbod, "+GYM.back+" min back.";
+  var lateGym=hm(toMin("12:00")-gymLen);
+  var weekendMove="Your pick on weekends: the gym ("+gymTrip.slice(0,-1)+") or an hour's walk outside.";
+  function gym(key,start){
+    var leave=toMin(start)+GYM.there+GYM.train;
+    add(key,start,hm(toMin(start)+gymLen),"body","Gym",gymTrip,[["go","Gym bag, out the door"],["session","Today's Fitbod workout, "+GYM.train+" min"],["back","Leave at "+hm(leave)+", "+GYM.back+" min home"]]);
+    var it=B[B.length-1].items[2];
+    it.at=leave;it.alert="Leave the gym";it.note=GYM.back+" minutes home, then shower.";
+  }
   function tail(start,title,detail,items){
     add("people",start,w[0],"people",title,detail,items);
     add("wind",w[0],w[1],"routine","Wind down","Journal 3 lines. Screens off.",[
@@ -691,10 +716,11 @@ function dayBlocks(c){
   /* Weekday holiday or day off: a weekend morning, no work. */
   if(c.weekday&&c.off){
     var trainH=TRAIN_DAYS.indexOf(c.dow)>=0;
-    add("wake",at("07:30"),at("08:00"),"routine","Wake up",(c.holiday?"Holiday: "+c.holiday+". ":"Day off. ")+"Code by the shower, then breakfast."+wakeNote("07:30",s),wakeBase.concat(breakfast));
-    if(c.urgent) add("uwork1",at("08:00"),"11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study",at("08:00"),"11:00","study","Study",studyNote,longStudy);
-    if(trainH) add("train","11:00","12:00","body","Gym","1h including travel. The workout is in Fitbod.",[["go","Gym bag, out the door"],["session","Today's Fitbod workout"]]);
+    var moveH=trainH?lateGym:"11:00";
+    add("wake",at("07:30"),at("08:10"),"routine","Wake up",(c.holiday?"Holiday: "+c.holiday+". ":"Day off. ")+"Code by the shower, then breakfast."+wakeNote("07:30",s),wakeBase.concat(breakfast));
+    if(c.urgent) add("uwork1",at("08:10"),moveH,"work","Work until "+moveH,"Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
+    else add("study",at("08:10"),moveH,"study","Study",studyNote,longStudy);
+    if(trainH) gym("train",lateGym);
     else add("walk","11:00","12:00","body","Walk outside","One hour outdoors. If it rains, 30 minutes of stretching at home.");
     add("lunch","12:00","13:00","meal","Lunch",trainH?"Start the defrost and shower while it runs.":"Start the defrost, then wash up while it runs.",
       (trainH?[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"]]:[["defrost","Put lunch in to defrost"]]).concat([["dishes","Dishes right after"],["teeth","Brush your teeth"]]));
@@ -712,12 +738,12 @@ function dayBlocks(c){
   if(c.weekday&&c.urgent){
     var wedU=c.dow===3,wakeU=wakeBase.slice();
     if(wedU) wakeU.push(["wash","Start the washing machine"]);
-    var mu=c.office?Math.min(s,30):s;
-    add("wake",at("06:45",mu),at("07:00",mu),"routine","Wake up","Code by the shower. No snooze."+wakeNote("06:45",mu),wakeU);
-    add("breakfast",at("07:00",mu),at("07:15",mu),"meal","Breakfast",c.office?"Simple breakfast. Dishes right after. Pack two snacks for the office.":"Simple breakfast. Dishes right after.",c.office?breakfast.concat([["pack","Pack two snacks for the office"]]):breakfast);
+    var mu=s;
+    add("wake",at("06:45",mu),at("07:05",mu),"routine","Wake up","Code by the shower. No snooze."+wakeNote("06:45",mu),wakeU);
+    add("breakfast",at("07:05",mu),at("07:25",mu),"meal","Breakfast",c.office?"Simple breakfast. Dishes right after. Pack two snacks for the office.":"Simple breakfast. Dishes right after.",c.office?breakfast.concat([["pack","Pack two snacks for the office"]]):breakfast);
     var lunchU=[["lunch","Lunch away from the desk"],["dishes","Dishes right after"],["teeth","Brush your teeth"],["walk","5-minute walk (rain: stretch)"]];
     if(c.office){
-      add("uwork1",at("07:15",mu),"08:30","work","Work: hardest task first","From home, before you leave.",hard);
+      add("uwork1",at("07:25",mu),"08:30","work","Work: hardest task first","From home, before you leave.",hard);
       var shU=[["shower","Shower"]];
       if(wedU) shU.push(["hang","Hang the laundry"]);
       add("shower","08:30","09:00","routine","Shower and get ready",wedU?"Shower, then hang the laundry.":"Leave at 09:00.",shU);
@@ -731,7 +757,7 @@ function dayBlocks(c){
       add("reset","20:40","21:00","home","House reset","Only the basics in urgent mode.",basic);
       tail("21:00","Rest","Time with people or a book. No work, no screens.");
     } else {
-      add("uwork1",at("07:15",mu),"09:15","work","Work: hardest task first","Before messages and email.",hard);
+      add("uwork1",at("07:25",mu),"09:15","work","Work: hardest task first","Before messages and email.",hard);
       var mv=[["walk","15-minute walk outside"],["shower","Shower"]];
       if(wedU) mv.push(["hang","Hang the laundry"]);
       add("move","09:15","09:45","body","Walk and shower","A 15-minute walk outside, then shower. No gym in urgent mode.",mv);
@@ -749,23 +775,27 @@ function dayBlocks(c){
     var train=TRAIN_DAYS.indexOf(c.dow)>=0,zone=ZONE[c.dow],wed=c.dow===3;
     var wake=wakeBase.slice();
     if(wed) wake.push(["wash","Start the washing machine"]);
-    var m=c.office?Math.min(s,30):s;
-    add("wake",at("06:45",m),at("07:00",m),"routine","Wake up","Code by the shower. No snooze."+wakeNote("06:45",m),wake);
-    add("breakfast",at("07:00",m),at("07:15",m),"meal","Breakfast",c.office?"Simple breakfast. Dishes right after. Pack two snacks for the office.":"Simple breakfast. Dishes right after.",c.office?breakfast.concat([["pack","Pack two snacks for the office"]]):breakfast);
+    var m=s;
+    /* Office days: a study slot under 10 minutes isn't worth it, so the shower block runs to 09:00 instead. */
+    var shEnd=at("08:45",m),officeStudy=c.office&&toMin("09:00")-toMin(shEnd)>=10;
+    if(c.office&&!officeStudy) shEnd="09:00";
+    var next=c.office&&!officeStudy?" Leave at 09:00.":" Then straight to study.";
+    add("wake",at("06:45",m),at("07:05",m),"routine","Wake up","Code by the shower. No snooze."+wakeNote("06:45",m),wake);
+    add("breakfast",at("07:05",m),at("07:25",m),"meal","Breakfast",c.office?"Simple breakfast. Dishes right after. Pack two snacks for the office.":"Simple breakfast. Dishes right after.",c.office?breakfast.concat([["pack","Pack two snacks for the office"]]):breakfast);
     if(train){
-      add("early",at("07:15",m),at("08:15",m),"body","Gym","1h including travel. The workout is in Fitbod.",[["go","Gym bag, out the door"],["session","Today's Fitbod workout"]]);
+      gym("early",at("07:25",m));
       var sh=[["shower","Shower"],["post","Post-workout snack: a banana and a yogurt or a shake"]];
       if(wed) sh.push(["hang","Hang the laundry"]);
-      add("shower",at("08:15",m),at("08:30",m),"routine","Shower and snack",wed?"Shower, post-workout snack, then hang the laundry.":"Shower and the post-workout snack. Then straight to study.",sh);
+      add("shower",at("08:30",m),shEnd,"routine","Shower and snack",wed?"Shower, post-workout snack, then hang the laundry."+(c.office&&!officeStudy?" Leave at 09:00.":""):"Shower and the post-workout snack."+next,sh);
     } else {
-      add("early",at("07:15",m),at("08:15",m),"study","Study",studyNote,study);
+      add("early",at("07:25",m),at("08:30",m),"study","Study",studyNote,study);
       var sh2=[["shower","Shower"]];
       if(wed) sh2.push(["hang","Hang the laundry"]);
-      add("shower",at("08:15",m),at("08:30",m),"routine","Shower",wed?"Shower, then hang the laundry.":"Then straight to study.",sh2);
+      add("shower",at("08:30",m),shEnd,"routine","Shower",wed?"Shower, then hang the laundry."+(c.office&&!officeStudy?" Leave at 09:00.":""):next.trim(),sh2);
     }
     var reset=[["counters","Counters"],["trash","Trash out"],["zone",zone]];
     if(c.office){
-      if(m<30) add("study",at("08:30",m),"09:00","study","Study",studyNote,study);
+      if(officeStudy) add("study",shEnd,"09:00","study","Study",studyNote,study);
       add("commute","09:00","10:00","commute","Commute","Anki or an audio class on the way.",[["anki","Anki or an audio class"]]);
       add("work1","10:00","11:50","work","Work","At the office.");
       add.apply(null,defrostLunch);
@@ -779,7 +809,7 @@ function dayBlocks(c){
       if(c.dow===5) tail("21:00","Time with people","Go out or stay in with people.");
       else tail("21:00","Time with people","Or a book. No screens.");
     } else {
-      add("study",at("08:30",m),"10:00","study","Study",studyNote,study);
+      add("study",shEnd,"10:00","study","Study",studyNote,study);
       add("work1","10:00","11:50","work","Work","From home.");
       add.apply(null,defrostLunch);
       var lunch=[["lunch","Lunch away from the desk"],["dishes","Dishes right after"],["teeth","Brush your teeth"],["walk","10-minute walk (rain: move around indoors)"]];
@@ -796,10 +826,10 @@ function dayBlocks(c){
       }
     }
   } else if(c.dow===6){
-    add("wake",at("07:30"),at("08:00"),"routine","Wake up","Code by the shower, then breakfast."+wakeNote("07:30",s),wakeBase.concat(breakfast));
-    if(c.urgent) add("uwork1",at("08:00"),"11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study",at("08:00"),"11:00","study","Study",studyNote,longStudy);
-    add("train","11:00","12:00","body","Gym or a walk","Your pick on weekends: the gym (Fitbod), or an hour walking outside.",[["move","Gym, or an hour's walk outside"]]);
+    add("wake",at("07:30"),at("08:10"),"routine","Wake up","Code by the shower, then breakfast."+wakeNote("07:30",s),wakeBase.concat(breakfast));
+    if(c.urgent) add("uwork1",at("08:10"),lateGym,"work","Work until "+lateGym,"Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
+    else add("study",at("08:10"),lateGym,"study","Study",studyNote,longStudy);
+    add("train",lateGym,"12:00","body","Gym or a walk",weekendMove,[["move","Gym, or an hour's walk outside"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and shower while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     var err=[["list","Buy everything on Friday's list"],["snacks","Restock: drinkable yogurts, bananas, nuts, eggs, bread, milk, peanut butter, ground beef, rice"]];
     if(c.nth===1) err.push(["restock","Restock cleaning and hygiene supplies","Monthly"]);
@@ -818,10 +848,10 @@ function dayBlocks(c){
     }
     tail("18:00","Time with people",c.urgent?"No work tonight.":"No gaming, no series.",c.lastOfMonth?[["new","Do something new with people: a new place, a trail, an event","Monthly"]]:[]);
   } else {
-    add("wake",at("07:30"),at("08:00"),"routine","Wake up","Code by the shower, then breakfast."+wakeNote("07:30",s),wakeBase.concat(breakfast));
-    if(c.urgent) add("uwork1",at("08:00"),"11:00","work","Work until 11:00","Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
-    else add("study",at("08:00"),"11:00","study","Study",studyNote,longStudy);
-    add("walk","11:00","12:00","body","Gym or a walk","Your pick on weekends: the gym (Fitbod), or an hour walking outside.",[["move","Gym, or an hour's walk outside"]]);
+    add("wake",at("07:30"),at("08:10"),"routine","Wake up","Code by the shower, then breakfast."+wakeNote("07:30",s),wakeBase.concat(breakfast));
+    if(c.urgent) add("uwork1",at("08:10"),lateGym,"work","Work until "+lateGym,"Hardest task first.",hard.concat([["breaks","10-minute break each hour"]]));
+    else add("study",at("08:10"),lateGym,"study","Study",studyNote,longStudy);
+    add("walk",lateGym,"12:00","body","Gym or a walk",weekendMove,[["move","Gym, or an hour's walk outside"]]);
     add("lunch","12:00","13:00","meal","Lunch","Start the defrost and shower while it runs. Dishes right after.",[["defrost","Put lunch in to defrost"],["shower","Shower while it runs"],["dishes","Dishes right after"],["teeth","Brush your teeth"]]);
     if(c.urgent){
       add("uwork2","13:00","16:00","work","Work, 3 hours","Stop at 16:00.",[["breaks","10-minute break each hour"],["left","Write down what's left for Monday"]]);
@@ -919,7 +949,7 @@ if(typeof document==="undefined") return;
 var APP_URL=location.origin+location.pathname;
 var CAP=window.Capacitor;
 var NATIVE=!!(CAP&&typeof CAP.isNativePlatform==="function"&&CAP.isNativePlatform());
-var APP_VERSION=24;
+var APP_VERSION=25;
 var APK_URL="https://github.com/jpvanacor/orders-of-the-day/releases/latest/download/orders-of-the-day.apk";
 var S_KEY="ood.settings.v1",C_KEY="ood.checks.v1";
 function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
@@ -1980,7 +2010,7 @@ function notifPlan(now){
       b.items.forEach(function(it){
         if(typeof it.at!=="number") return;
         var at=new Date(sday.getFullYear(),sday.getMonth(),sday.getDate(),0,it.at);
-        if(at>now) out.push({id:id++,kind:"block",at:at,title:"Snack time",body:it.note+" Then tick it in Orders."});
+        if(at>now) out.push({id:id++,kind:"block",at:at,title:it.alert||"Snack time",body:it.alert?it.note:it.note+" Then tick it in Orders."});
       });
     });
   }
@@ -2208,7 +2238,8 @@ function renderLadder(){
   steps.textContent="";
   for(var v=60;v>=0;v-=5){var i=el("i");if(v>lv) i.className="on";else if(v===lv) i.className="here";steps.append(i);}
   var wd=hm(toMin("06:45")+lv),we=hm(toMin("07:30")+lv);
-  $("ladderText").textContent=(lv?"Alarm "+wd+" on weekdays, "+we+" on weekends; bedtime moves with it. Goal: 06:45. ":"At the goal: 06:45 on weekdays, 07:30 on weekends. ")+
+  var oc=settings.officeDays.length&&lv>OFFICE_CAP?"Office days stay at "+hm(toMin("06:45")+OFFICE_CAP)+" so you leave at 09:00. ":"";
+  $("ladderText").textContent=(lv?"Alarm "+wd+" on weekdays, "+we+" on weekends; bedtime moves with it. Goal: 06:45. ":"At the goal: 06:45 on weekdays, 07:30 on weekends. ")+oc+
     "Win: scan the code within 10 minutes of the alarm. Two wins in a row: 5 minutes earlier. A miss (late scan, practice stop, the sentence, no scan): 5 minutes later."+
     (lv&&(L.wins||0)>=1?" One win so far.":"")+(L.from&&L.from>ymd(new Date())?" The new time starts tomorrow.":"");
   var hist=$("ladderHist"),days=Object.keys(L.hist).sort().slice(-7);
